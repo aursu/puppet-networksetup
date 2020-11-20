@@ -31,7 +31,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
     dev_opts = [:addrgenmode, :numtxqueues, :numrxqueues, :gso_max_size, :gso_max_segs, :mtu, :master]
     show_opts = [:qdisc, :state, :mode, :group, :qlen]
-    link_layer_opts = [:brd, :promiscuity, 'link-netnsid']
+    link_layer_opts = [:brd, :promiscuity, 'link-netnsid', :minmtu, :maxmtu]
     bridge_opts = [:forward_delay, :hello_time, :max_age, :ageing_time, :stp_state, :priority, :vlan_filtering,
     :vlan_protocol, :vlan_default_pvid, :vlan_stats_enabled, :group_fwd_mask, :group_address, :mcast_snooping,
     :mcast_router, :mcast_query_use_ifaddr, :mcast_querier, :mcast_hash_elasticity, :mcast_hash_max,
@@ -54,6 +54,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     :flood, :proxy_arp, :proxy_arp_wifi, :mcast_router, :mcast_fast_leave, :mcast_flood,
     :mcast_to_unicast, :group_fwd_mask, :neigh_suppress, :vlan_tunnel, :isolated,
     :backup_port]
+    tun_opts = [:type :pi :vnet_hdr :persist]
 
     name = @resource[:name]
     cmdout = self.class.provider_show(name)
@@ -87,8 +88,13 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
     # link layer settings
     # eg link/ether 22:f0:e3:ea:e8:16
-    @desc['link-type'], @desc['link-addr'], *options = desc_lines[1].split.map { |o| o.strip }
-
+    @desc['link-type'], *options_addr = desc_lines[1].split.map { |o| o.strip }
+    if @desc['link-type'] == 'link/none'
+      @desc['link-addr'] = ''
+      options = options_addr
+    else
+      @desc['link-addr'], *options = options_addr
+    end
     # eg brd ff:ff:ff:ff:ff:ff link-netnsid 9 promiscuity 1
     options = Hash[options.each_slice(2).to_a]
     (link_layer_opts + dev_opts).each do |f|
@@ -158,6 +164,8 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
         @desc['type'] = type
         type_opts = vlan_opts + dev_opts
+      when :tun
+        type_opts = tun_opts + dev_opts
       end
 
       options = Hash[options.each_slice(2).to_a]
