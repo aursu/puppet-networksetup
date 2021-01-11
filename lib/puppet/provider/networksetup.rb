@@ -1,23 +1,27 @@
 require 'json'
 require 'shellwords'
 
+#
 class Puppet::Provider::NetworkSetup < Puppet::Provider
   initvars
 
   commands ip: 'ip'
+  commands brctl: 'brctl'
 
-  if command('ip')
-    confine true: begin
-                    ip('-V')
-                  rescue Puppet::ExecutionFailure
-                    false
-                  else
-                    true
-                  end
-  end
+  confine true: begin
+                  ip('-V')
+                rescue Puppet::ExecutionFailure, Puppet::MissingCommand
+                  false
+                else
+                  true
+                end
 
   def self.ip_comm
     command(:ip)
+  end
+
+  def self.brctl_comm
+    command(:brctl)
   end
 
   def self.provider_command(bin = nil)
@@ -26,25 +30,32 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     @cmd = if cmd
              cmd
            else
-            ip_comm
+             ip_comm
            end
     @cmd
   end
 
-  def self.provider_caller(*args)
-    provider_command unless @cmd
+  def self.system_command(bin)
+    Puppet::Util.which(bin)
+  end
 
-    cmdline = Shellwords.join(args)
+  def self.system_caller(bin, *args)
+    cmd = system_command(bin)
 
-    cmd = [@cmd, cmdline].compact.join(' ')
+    cmdargs = Shellwords.join(args)
+    cmdline = [cmd, cmdargs].compact.join(' ') if cmd
 
-    cmdout = Puppet::Util::Execution.execute(cmd)
+    cmdout = Puppet::Util::Execution.execute(cmdline) if cmdline
     return nil if cmdout.nil?
     return nil if cmdout.empty?
     return cmdout
   rescue Puppet::ExecutionFailure => detail
-    Puppet.debug "Execution of #{@cmd} command failed: #{detail}"
+    Puppet.debug "Execution of $(#{cmdline}) command failed: #{detail}"
     false
+  end
+
+  def self.provider_caller(*args)
+    system_caller(provider_command, *args)
   end
 
   def empty_or_absent(value)

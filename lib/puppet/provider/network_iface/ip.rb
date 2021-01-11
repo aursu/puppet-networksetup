@@ -4,6 +4,12 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
   desc 'Manage network interfaces.'
 
   commands ip: 'ip'
+  commands brctl: 'brctl'
+
+  def initialize(value = {})
+    super(value)
+    @property_flush = {}
+  end
 
   def self.provider_create(*args)
     provider_caller('link', 'add', *args)
@@ -19,87 +25,91 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
   def self.provider_show(*args)
     # -o - output each record on a single line, replacing line feeds with the '\' character.
-    provider_caller('-details',  '-o', 'link', 'show', *args)
+    provider_caller('-details', '-o', 'link', 'show', *args)
   end
 
-  def self.provider_list(*args)
-    provider_show
+  def brctl_caller(*args)
+    self.class.system_caller(brctl_comm, *args)
   end
 
-  def provider_show
-    return @desc if @desc
-
+  # parse ip -details -o link show command output
+  def interface_show(name)
     dev_opts = [:addrgenmode, :numtxqueues, :numrxqueues, :gso_max_size, :gso_max_segs, :mtu, :master]
     show_opts = [:qdisc, :state, :mode, :group, :qlen]
     link_layer_opts = [:brd, :promiscuity, 'link-netnsid', :minmtu, :maxmtu]
-    bridge_opts = [:forward_delay, :hello_time, :max_age, :ageing_time, :stp_state, :priority, :vlan_filtering,
-    :vlan_protocol, :vlan_default_pvid, :vlan_stats_enabled, :group_fwd_mask, :group_address, :mcast_snooping,
-    :mcast_router, :mcast_query_use_ifaddr, :mcast_querier, :mcast_hash_elasticity, :mcast_hash_max,
-    :mcast_last_member_count, :mcast_startup_query_count, :mcast_last_member_interval, :mcast_membership_interval,
-    :mcast_querier_interval, :mcast_query_interval, :mcast_query_response_interval, :mcast_startup_query_interval,
-    :mcast_stats_enabled, :mcast_igmp_version, :mcast_mld_version, :nf_call_iptables, :nf_call_ip6tables,
-    :nf_call_arptables]
+    bridge_opts = [:forward_delay, :hello_time, :max_age, :ageing_time, :stp_state, :priority,
+                   :vlan_filtering, :vlan_protocol, :vlan_default_pvid, :vlan_stats_enabled, :group_fwd_mask,
+                   :group_address, :mcast_snooping, :mcast_router, :mcast_query_use_ifaddr, :mcast_querier,
+                   :mcast_hash_elasticity, :mcast_hash_max, :mcast_last_member_count, :mcast_startup_query_count,
+                   :mcast_last_member_interval, :mcast_membership_interval, :mcast_querier_interval,
+                   :mcast_query_interval, :mcast_query_response_interval, :mcast_startup_query_interval,
+                   :mcast_stats_enabled, :mcast_igmp_version, :mcast_mld_version, :nf_call_iptables, :nf_call_ip6tables,
+                   :nf_call_arptables]
     vxlan_opts = [:id, :dev, :group, :remote, :local, :ttl, :tos, :df, :flowlabel, :dstport, :ageing, :maxaddress]
     vxlan_flags = [:learning, :nolearning, :proxy, :noproxy, :rsc, :norsc, :l2miss, :nol2miss, :l3miss,
-    :nol3miss, :udpcsum, :udp6zerocsumtx, :udp6zerocsumrx, :external, :noudpcsum, :noudp6zerocsumtx,
-    :noudp6zerocsumrx, :noexternal, :gbp, :gpe]
+                   :nol3miss, :udpcsum, :udp6zerocsumtx, :udp6zerocsumrx, :external, :noudpcsum, :noudp6zerocsumtx,
+                   :noudp6zerocsumrx, :noexternal, :gbp, :gpe]
     bond_opts = [:state, :mode, :active_slave, :clear_active_slave, :miimon, :updelay, :downdelay, :use_carrier,
-    :arp_interval, :arp_validate, :arp_all_targets, :arp_ip_target, :primary, :primary_reselect,
-    :fail_over_mac, :xmit_hash_policy, :resend_igmp, :num_grat_arp, :num_unsol_na, :all_slaves_active,
-    :min_links, :lp_interval, :packets_per_slave, :tlb_dynamic_lb, :lacp_rate, :ad_select, :ad_user_port_key,
-    :ad_actor_sys_prio, :ad_actor_system, :queue_id, :mii_status]
+                 :arp_interval, :arp_validate, :arp_all_targets, :arp_ip_target, :primary, :primary_reselect,
+                 :fail_over_mac, :xmit_hash_policy, :resend_igmp, :num_grat_arp, :num_unsol_na, :all_slaves_active,
+                 :min_links, :lp_interval, :packets_per_slave, :tlb_dynamic_lb, :lacp_rate, :ad_select,
+                 :ad_user_port_key, :ad_actor_sys_prio, :ad_actor_system, :queue_id, :mii_status]
     vlan_opts = [:protocol, :id, 'ingress-qos-map', 'egress-qos-map']
     vlan_flags = [:reorder_hdr, :gvrp, :mvrp, :loose_binding, :bridge_binding]
     bridge_slave_opts = [:state, :priority, :cost, :guard, :hairpin, :fastleave, :root_block, :learning,
-    :flood, :proxy_arp, :proxy_arp_wifi, :mcast_router, :mcast_fast_leave, :mcast_flood,
-    :mcast_to_unicast, :group_fwd_mask, :neigh_suppress, :vlan_tunnel, :isolated,
-    :backup_port]
-    tun_opts = [:type :pi :vnet_hdr :persist]
+                         :flood, :proxy_arp, :proxy_arp_wifi, :mcast_router, :mcast_fast_leave, :mcast_flood,
+                         :mcast_to_unicast, :group_fwd_mask, :neigh_suppress, :vlan_tunnel, :isolated,
+                         :backup_port]
+    tun_opts = [:type, :pi, :vnet_hdr, :persist]
 
-    name = @resource[:name]
     cmdout = self.class.provider_show(name)
-
     return {} if cmdout.nil?
 
-    @desc = {}
+    desc = {}
 
     # split to lines
     desc_lines = cmdout.split('\\').map { |l| l.strip }
 
     # 35: docker0:
-    @desc['ifindex'], ifname, options_string = desc_lines[0].split(':').map { |o| o.strip }
+    desc['ifindex'], ifname, options_string = desc_lines[0].split(':').map { |o| o.strip }
 
+    # interface  name
     # eg bond0.316@bond0
-    @desc['ifname'], @desc['ifmaster'] =  ifname.split('@')
+    desc['ifname'], desc['ifmaster'] =  ifname.split('@')
 
     # eg <BROADCAST,MULTICAST,UP,LOWER_UP>
     oflags, *options = options_string.split
     m = oflags.match(%r{<(.*)>})
 
     # ['BROADCAST', 'MULTICAST', 'UP', 'LOWER_UP']
-    @desc['ifflags'] = m[1].split(',') if m
+    desc['ifflags'] = m[1].split(',') if m
 
     # mtu 1450 qdisc noqueue master brqcb67e1d3-0b state UP mode DEFAULT group default qlen 1000
     options = Hash[options.each_slice(2).to_a]
-    (dev_opts + show_opts).each { |f|
+    (dev_opts + show_opts).each do |f|
       s = f.to_s
-      @desc[s] = options[s].to_s if options[s]
-    }
+      desc[s] = options[s].to_s if options[s]
+    end
 
-    # link layer settings
+    # 207: ppp0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1400 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 3
+    #    link/ppp  promiscuity 0 minmtu 0 maxmtu 0
+    #    ppp addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
+    #
+    # Link layer settings
     # eg link/ether 22:f0:e3:ea:e8:16
-    @desc['link-type'], *options_addr = desc_lines[1].split.map { |o| o.strip }
-    if @desc['link-type'] == 'link/none'
-      @desc['link-addr'] = ''
+    desc['link-type'], *options_addr = desc_lines[1].split.map { |o| o.strip }
+    if ['link/none', 'link/ppp'].include?(desc['link-type'])
+      desc['link-addr'] = ''
       options = options_addr
     else
-      @desc['link-addr'], *options = options_addr
+      desc['link-addr'], *options = options_addr
     end
+
     # eg brd ff:ff:ff:ff:ff:ff link-netnsid 9 promiscuity 1
     options = Hash[options.each_slice(2).to_a]
     (link_layer_opts + dev_opts).each do |f|
       s = f.to_s
-      @desc[s] = options[s].to_s if options[s]
+      desc[s] = options[s].to_s if options[s]
     end
 
     if desc_lines.size > 2
@@ -108,20 +118,20 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
       # eg :vxlan or :veth
       type = type.to_sym
-      @desc[type] = {}
+      desc[type] = {}
 
       case type
-      when :veth
-        @desc['type'] = type
+      when :veth, :ppp
+        desc['type'] = type
         type_opts = dev_opts
       when :bridge
-        @desc['type'] = type
+        desc['type'] = type
         type_opts = bridge_opts + dev_opts
       when :vxlan
         # srcport MIN MAX
         i = options.index('srcport')
         if i
-          @desc[type]['srcport'] = { 'min' => options[i + 1], 'max' => options[i + 2] }
+          desc[type]['srcport'] = { 'min' => options[i + 1], 'max' => options[i + 2] }
           options = options[0...i] + options[i + 3..-1]
         end
         # eg noudpcsum noudp6zerocsumtx noudp6zerocsumrxv
@@ -129,58 +139,66 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
           s = f.to_s
           i = options.index(s)
           if i
-            @desc[type][s] = true
+            desc[type][s] = true
             options.delete_at(i)
           end
         end
 
-        @desc['type'] = type
+        desc['type'] = type
         type_opts = vxlan_opts
       when :bond
-        @desc['type'] = type
+        desc['type'] = type
         type_opts = bond_opts + dev_opts
       when :bond_slave
         # according to man 7 ip - ETYPE := [ TYPE | bridge_slave | bond_slave ]
-        @desc['etype'] = type
+        desc['etype'] = type
         type_opts = bond_opts + dev_opts
       when :vlan
         m = nil
         options.each do |o|
           # <REORDER_HDR,LOOSE_BINDING>
           m = o.match(%r{<(.*)>})
-          if m
-            flags = m[1].split(',').map { |f| f.to_s.downcase }
-            vlan_flags.each do |f|
-              s = f.to_s
-              @desc[type][s] = if flags.include?(s)
-                            'on'
-                          else
-                            'off'
-                          end
-            end
+
+          skip unless m
+
+          flags = m[1].split(',').map { |f| f.to_s.downcase }
+          vlan_flags.each do |f|
+            s = f.to_s
+            desc[type][s] = if flags.include?(s)
+                              'on'
+                            else
+                              'off'
+                            end
           end
         end
         options.delete(m[0]) if m
 
-        @desc['type'] = type
+        desc['type'] = type
         type_opts = vlan_opts + dev_opts
       when :tun
+        desc['type'] = type
         type_opts = tun_opts + dev_opts
       end
 
       options = Hash[options.each_slice(2).to_a]
       type_opts.each do |f|
         s = f.to_s
-        @desc[type][s] = options[s].to_s if options[s]
+        desc[type][s] = options[s].to_s if options[s]
       end
     end
 
+    # rubocop:disable Metrics/LineLength
+    # 188: o-bhm0@o-hm0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop master brqcb67e1d3-0b state DOWN mode DEFAULT group default qlen 1000
+    #    link/ether 5e:42:74:a2:8b:6e brd ff:ff:ff:ff:ff:ff promiscuity 1
+    #    veth
+    #    bridge_slave state disabled priority 32 cost 2 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8003 port_no 0x3 designated_port 32771 designated_cost 0 designated_bridge 8000.22:f0:e3:ea:e8:16 designated_root 8000.22:f0:e3:ea:e8:16 hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
+    # rubocop:enable Metrics/LineLength
     if desc_lines.size > 3
       etype, *options = desc_lines[3].split.map { |o| o.strip }
-      @desc['etype'] = etype
+      desc['etype'] = etype
 
       etype = etype.to_sym
-      @desc[etype] = {}
+      desc[etype] = {}
 
       options = Hash[options.each_slice(2).to_a]
 
@@ -188,29 +206,18 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
       when :bridge_slave
         bridge_slave_opts.each do |f|
           s = f.to_s
-          @desc[etype][s] = options[s].to_s if options[s]
+          desc[etype][s] = options[s].to_s if options[s]
         end
       end
     end
+
+    desc
   end
 
-  def type
-    provider_show['type']
-  end
+  def provider_show
+    name = @resource[:name]
 
-  def peer_name
-    provider_show['ifmaster']
-  end
-
-  def peer_name=(name)
-    type = @resource[:type]
-
-    case type
-    when :veth
-      self.class.provider_set('dev', peer_name, 'type', 'veth', 'peer', 'name', name)
-      # rename peer device only if same namespace
-      unless provider_show['ifmaster'].match(%r{^if[0-9]+$}) && provider_show['link-netnsid']
-    end
+    @desc ||= interface_show(name)
   end
 
   def create
@@ -225,6 +232,41 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     end
   end
 
+  def type
+    provider_show['type']
+  end
+
+  def peer_name
+    provider_show['ifmaster'] || :absent
+  end
+
+  def peer_name=(peer)
+    @property_flush[:peer_name] = peer
+  end
+
+  def bridge
+    if provider_show['etype'] == 'bridge_slave'
+      provider_show['master']
+    else
+      :absent
+    end
+  end
+
+  def bridge=(brname)
+    name = @resource[:name]
+    if provider_show['etype'] == 'bridge_slave'
+      if brname == :absent
+        brctl_caller('delif', brname, name)
+      else
+        raise Puppet::Error, _("device #{name} is already a member of a bridge") unless provider_show['master'] == brname
+      end
+    else
+      # eg brctl addif brqfc32e1e1-6f o-bhm0
+      brctl_caller('addif', brname, name)
+    end
+    @property_flush[:bridge] = brname
+  end
+
   def destroy
     name = @resource[:name]
 
@@ -235,5 +277,9 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     name = @resource[:name]
     # no ifname - no  device
     provider_show['ifname'] == name
+  end
+
+  def flush
+    return if @property_flush.empty?
   end
 end

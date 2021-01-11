@@ -20,11 +20,15 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   newproperty(:peer_name) do
-    desc 'Specifies the virtual pair device name of the VETH tunnel'
+    desc 'Specifies the virtual pair device name of the veth tunnel'
+  end
+
+  newproperty(:bridge) do
+    desc 'Add interface to the bridge'
   end
 
   validate do
-    if @parameters[:type] == :veth && @parameters[:peer_name] == :absent
+    if self[:type] == :veth && (self[:peer_name] == :absent || self[:peer_name].nil?)
       raise Puppet::Error, _('error: peer name property must be specified for VETH tunnel')
     end
   end
