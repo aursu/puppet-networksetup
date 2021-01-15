@@ -58,20 +58,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     system_caller(provider_command, *args)
   end
 
-  def empty_or_absent(value)
-    return true if value.nil?
-    return true if value.is_a?(String) && value.empty?
-    return true if value == :absent
-    false
-  end
-
-  # return array of values except value 'absent'
-  # :absent   -> []
-  # 'absent'  -> []
-  # [:absent] -> []
-  # [nil]     -> []
-  # 'value'   -> ['value']
-  def prop_to_array(prop)
-    [prop].flatten.reject { |p| p.to_s == 'absent' }.compact
+  def self.brctl_caller(*args)
+    system_caller(brctl_comm, *args)
   end
 end
