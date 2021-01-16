@@ -11,6 +11,59 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     @property_flush = {}
   end
 
+  def self.get_hwaddr(name)
+    syspath = "/sys/class/net/#{name}"
+    if File.exist?("#{syspath}/address")
+      File.read("#{syspath}/address").upcase
+    elsif File.exist?(syspath)
+      desc = interface_show(name)
+      desc['link-addr'].upcase
+    end
+  end
+
+  def self.config(name, conn_name = nil)
+    # NAME inside ifcfg file could be different than name for device
+    conn_name = name if conn_name.nil?
+    if File.exist?(name)
+      name
+    elsif File.exist?("/etc/sysconfig/network-scripts/#{name}")
+      "/etc/sysconfig/network-scripts/#{name}"
+    elsif File.exist?("/etc/sysconfig/network-scripts/ifcfg-#{name}")
+      "/etc/sysconfig/network-scripts/ifcfg-#{name}"
+    else
+      # try to find config file by NAME
+      ifcfg = get_config_by_name(conn_name)
+      # try to find config file by HWADDR
+      if ifcfg.empty?
+        addr = get_hwaddr(name)
+        ifcfg = get_config_by_hwaddr(addr) unless addr.empty?
+      end
+      # try to find config file by DEVICE
+      if ifcfg.nil? || ifcfg.empty?
+        ifcfg = get_config_by_device(name)
+      end
+      ifcfg
+    end
+  end
+
+  def config_path
+    name = @resource[:name]
+    device = @resource[:device]
+    conn_name = @resource[:conn_name]
+
+    @config ||= self.class.config(name, conn_name)
+
+    return @config if @config || device.nil? || device.empty? || device == name
+
+    @config ||= self.class.config(device, conn_name)
+  end
+
+  def ifcfg_data
+    @data ||= self.class.parse_config(config_path)
+  end
+
+  mk_resource_methods
+
   def self.provider_create(*args)
     provider_caller('link', 'add', *args)
   end
