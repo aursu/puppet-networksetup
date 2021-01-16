@@ -111,14 +111,14 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     desc
   end
 
-  def self.get_config_all
+  def self.config_all
     Dir.glob('/etc/sysconfig/network-scripts/ifcfg-*').reject do |config|
       config =~ %r{(~|\.(bak|old|orig|rpmnew|rpmorig|rpmsave))$}
     end
   end
 
   def self.get_config_by_name(name)
-    get_config_all.each do |config|
+    config_all.each do |config|
       desc = parse_config(config)
       return config if desc['conn_name'].casecmp(name)
     end
@@ -126,7 +126,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.get_config_by_hwaddr(addr)
-    get_config_all.each do |config|
+    config_all.each do |config|
       desc = parse_config(config)
       return config if desc['hwaddr'].casecmp(addr)
     end
@@ -134,7 +134,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.get_config_by_device(device)
-    get_config_all.each do |config|
+    config_all.each do |config|
       desc = parse_config(config)
       return config if desc['device'] == device
     end
@@ -151,13 +151,12 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
      :ipaddr,
      :netmask,
      :network,
-     :onboot,
-    ].each do |attr|
+     :onboot].each do |attr|
       define_method(attr) do
         ifcfg_data[attr.to_s]
       end
 
-      define_method(attr.to_s + "=") do |val|
+      define_method(attr.to_s + '=') do |val|
         @property_flush[attr] = val
       end
     end

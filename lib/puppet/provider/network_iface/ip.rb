@@ -19,6 +19,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
       desc = interface_show(name)
       desc['link-addr'].upcase
     end
+    ''
   end
 
   def self.config(name, conn_name = nil)
@@ -33,9 +34,10 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     else
       # try to find config file by NAME
       ifcfg = get_config_by_name(conn_name)
+
       # try to find config file by HWADDR
-      if ifcfg.empty?
-        addr = get_hwaddr(name)
+      addr = get_hwaddr(name)
+      if ifcfg.empty? && addr
         ifcfg = get_config_by_hwaddr(addr) unless addr.empty?
       end
       # try to find config file by DEVICE

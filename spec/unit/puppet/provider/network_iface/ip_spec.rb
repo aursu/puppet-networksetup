@@ -25,7 +25,10 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
   end
 
   describe 'new veth interface' do
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-o-hm0', 'w', 0o600) }
     it do
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-o-hm0', 'w', 0o600).and_return(ifcfg)
       expect(Puppet::Util::Execution).to receive(:execute)
         .with('/sbin/ip link add o-hm0 type veth peer name o-bhm0')
       provider.create
