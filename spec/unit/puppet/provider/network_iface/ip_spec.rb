@@ -6,7 +6,7 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
     Puppet::Type.type(:network_iface).new(
       name: resource_name,
       ensure: :present,
-      type: 'veth',
+      link_kind: 'veth',
       peer_name: 'o-bhm0',
     )
   end
@@ -51,10 +51,13 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
         .and_return('207: ppp0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1400 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 3\    link/ppp  promiscuity 0 minmtu 0 maxmtu 0 \    ppp addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
       expect(provider.provider_show).to eq(
+        'addrgenmode' => 'eui64',
         'group' => 'default',
-        'ifflags' => ['POINTOPOINT', 'MULTICAST', 'NOARP', 'UP', 'LOWER_UP'],
-        'ifindex' => '207',
-        'ifmaster' => nil,
+        'gso_max_segs' => '65535',
+        'gso_max_size' => '65536',
+        'link-flags' => ['POINTOPOINT', 'MULTICAST', 'NOARP', 'UP', 'LOWER_UP'],
+        'ifi_index' => '207',
+        'iflink' => nil,
         'ifname' => 'ppp0',
         'link-addr' => '',
         'link-type' => 'link/ppp',
@@ -62,12 +65,14 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
         'minmtu' => '0',
         'mode' => 'DEFAULT',
         'mtu' => '1400',
+        'numrxqueues' => '1',
+        'numtxqueues' => '1',
         'promiscuity' => '0',
         'qdisc' => 'fq_codel',
         'qlen' => '3',
         'state' => 'UNKNOWN',
-        'type' => :ppp,
-        ppp: { 'addrgenmode' => 'eui64', 'gso_max_segs' => '65535', 'gso_max_size' => '65536', 'numrxqueues' => '1', 'numtxqueues' => '1' },
+        'link-kind' => :ppp,
+        ppp: {},
       )
     end
   end
@@ -92,10 +97,13 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
         .and_return('220: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1406 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 500\    link/none  promiscuity 0 minmtu 68 maxmtu 65535 \    tun type tun pi off vnet_hdr off persist off addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
       expect(provider.provider_show).to eq(
+        'addrgenmode' => 'eui64',
         'group' => 'default',
-        'ifflags' => ['POINTOPOINT', 'MULTICAST', 'NOARP', 'UP', 'LOWER_UP'],
-        'ifindex' => '220',
-        'ifmaster' => nil,
+        'gso_max_segs' => '65535',
+        'gso_max_size' => '65536',
+        'link-flags' => ['POINTOPOINT', 'MULTICAST', 'NOARP', 'UP', 'LOWER_UP'],
+        'ifi_index' => '220',
+        'iflink' => nil,
         'ifname' => 'tun0',
         'link-addr' => '',
         'link-type' => 'link/none',
@@ -103,17 +111,14 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
         'minmtu' => '68',
         'mode' => 'DEFAULT',
         'mtu' => '1406',
+        'numrxqueues' => '1',
+        'numtxqueues' => '1',
         'promiscuity' => '0',
         'qdisc' => 'fq_codel',
         'qlen' => '500',
         'state' => 'UNKNOWN',
-        'type' => :tun,
+        'link-kind' => :tun,
         tun: {
-          'addrgenmode' => 'eui64',
-          'gso_max_segs' => '65535',
-          'gso_max_size' => '65536',
-          'numrxqueues' => '1',
-          'numtxqueues' => '1',
           'persist' => 'off',
           'pi' => 'off',
           'type' => 'tun',
@@ -150,12 +155,15 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
         .and_return('17: tapcf33b841-6f@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue master brqfc32e1e1-6f state UP mode DEFAULT group default qlen 1000\    link/ether ca:8c:b2:ee:35:fd brd ff:ff:ff:ff:ff:ff link-netnsid 8 promiscuity 1 \    veth \    bridge_slave state forwarding priority 32 cost 2 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8003 port_no 0x3 designated_port 32771 designated_cost 0 designated_bridge 8000.16:e8:8a:82:ba:4e designated_root 8000.16:e8:8a:82:ba:4e hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
       expect(provider.provider_show).to eq(
+        'addrgenmode' => 'eui64',
         'brd' => 'ff:ff:ff:ff:ff:ff',
         'etype' => 'bridge_slave',
         'group' => 'default',
-        'ifflags' => ['BROADCAST', 'MULTICAST', 'UP', 'LOWER_UP'],
-        'ifindex' => '17',
-        'ifmaster' => 'if2',
+        'gso_max_segs' => '65535',
+        'gso_max_size' => '65536',
+        'link-flags' => ['BROADCAST', 'MULTICAST', 'UP', 'LOWER_UP'],
+        'ifi_index' => '17',
+        'iflink' => 'if2',
         'ifname' => 'tapcf33b841-6f',
         'link-addr' => 'ca:8c:b2:ee:35:fd',
         'link-netnsid' => '8',
@@ -163,26 +171,39 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
         'master' => 'brqfc32e1e1-6f',
         'mode' => 'DEFAULT',
         'mtu' => '1450',
+        'numrxqueues' => '1',
+        'numtxqueues' => '1',
         'promiscuity' => '1',
         'qdisc' => 'noqueue',
         'qlen' => '1000',
         'state' => 'UP',
-        'type' => :veth,
+        'link-kind' => :veth,
         :bridge_slave => {
+          'config_pending' => '0',
           'cost' => '2',
+          'designated_bridge' => '8000.16:e8:8a:82:ba:4e',
+          'designated_cost' => '0',
+          'designated_port' => '32771',
+          'designated_root' => '8000.16:e8:8a:82:ba:4e',
           'fastleave' => 'off',
           'flood' => 'on',
+          'forward_delay_timer' => '0.00',
           'guard' => 'off',
           'hairpin' => 'off',
+          'hold_timer' => '0.00',
           'learning' => 'on',
           'mcast_fast_leave' => 'off',
           'mcast_flood' => 'on',
           'mcast_router' => '1',
+          'message_age_timer' => '0.00',
+          'port_id' => '0x8003',
+          'port_no' => '0x3',
           'priority' => '32',
           'proxy_arp' => 'off',
           'proxy_arp_wifi' => 'off',
           'root_block' => 'off',
           'state' => 'forwarding',
+          'topology_change_ack' => '0',
         },
         :veth => {},
       )
@@ -195,7 +216,7 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
       Puppet::Type.type(:network_iface).new(
         name: resource_name,
         ensure: :present,
-        type: :veth,
+        link_kind: :veth,
         peer_name: 'o-hm0',
       )
     end
@@ -211,28 +232,27 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
         .and_return('188: o-bhm0@o-hm0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000\    link/ether 5e:42:74:a2:8b:6e brd ff:ff:ff:ff:ff:ff promiscuity 0\    veth addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
       expect(provider.provider_show).to eq(
+        'addrgenmode' => 'eui64',
         'brd' => 'ff:ff:ff:ff:ff:ff',
         'group' => 'default',
-        'ifflags' => ['BROADCAST', 'MULTICAST'],
-        'ifindex' => '188',
+        'gso_max_size' => '65536',
+        'gso_max_segs' => '65535',
+        'link-flags' => ['BROADCAST', 'MULTICAST'],
+        'ifi_index' => '188',
         'ifname' => 'o-bhm0',
-        'ifmaster' => 'o-hm0',
+        'iflink' => 'o-hm0',
         'link-addr' => '5e:42:74:a2:8b:6e',
         'link-type' => 'link/ether',
         'mode' => 'DEFAULT',
         'mtu' => '1500',
+        'numtxqueues' => '1',
+        'numrxqueues' => '1',
         'promiscuity' => '0',
         'qdisc' => 'noop',
         'qlen' => '1000',
         'state' => 'DOWN',
-        'type' => :veth,
-        :veth => {
-          'addrgenmode' => 'eui64',
-          'numtxqueues' => '1',
-          'numrxqueues' => '1',
-          'gso_max_size' => '65536',
-          'gso_max_segs' => '65535',
-        },
+        'link-kind' => :veth,
+        :veth => {},
       )
     }
   end
@@ -243,7 +263,7 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
       Puppet::Type.type(:network_iface).new(
         name: resource_name,
         ensure: :present,
-        type: :veth,
+        link_kind: :veth,
         peer_name: 'o-hm0',
       )
     end
