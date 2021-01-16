@@ -140,4 +140,26 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     end
     ''
   end
+
+  def self.mk_resource_methods
+    [:bootproto,
+     :broadcast,
+     :conn_name,
+     :conn_type,
+     :device,
+     :hwaddr,
+     :ipaddr,
+     :netmask,
+     :network,
+     :onboot,
+    ].each do |attr|
+      define_method(attr) do
+        ifcfg_data[attr.to_s]
+      end
+
+      define_method(attr.to_s + "=") do |val|
+        @property_flush[attr] = val
+      end
+    end
+  end
 end
