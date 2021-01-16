@@ -110,4 +110,34 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
     desc
   end
+
+  def self.get_config_all
+    Dir.glob('/etc/sysconfig/network-scripts/ifcfg-*').reject do |config|
+      config =~ %r{(~|\.(bak|old|orig|rpmnew|rpmorig|rpmsave))$}
+    end
+  end
+
+  def self.get_config_by_name(name)
+    get_config_all.each do |config|
+      desc = parse_config(config)
+      return config if desc['conn_name'].casecmp(name)
+    end
+    ''
+  end
+
+  def self.get_config_by_hwaddr(addr)
+    get_config_all.each do |config|
+      desc = parse_config(config)
+      return config if desc['hwaddr'].casecmp(addr)
+    end
+    ''
+  end
+
+  def self.get_config_by_device(device)
+    get_config_all.each do |config|
+      desc = parse_config(config)
+      return config if desc['device'] == device
+    end
+    ''
+  end
 end
