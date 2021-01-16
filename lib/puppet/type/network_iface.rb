@@ -10,11 +10,11 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   newparam(:name, namevar: true) do
-    desc 'New device name'
+    desc 'Interface name. In use to lookup ifcgf script inside /etc/sysconfig/network-scripts'
   end
 
-  newproperty(:type) do
-    desc 'Device type'
+  newproperty(:link_kind) do
+    desc 'Device link type'
 
     newvalues(:veth, :bridge, :vxlan, :bond, :vlan)
   end
@@ -28,7 +28,7 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   validate do
-    if self[:type] == :veth && (self[:peer_name] == :absent || self[:peer_name].nil?)
+    if self[:link_kind] == :veth && (self[:peer_name] == :absent || self[:peer_name].nil?)
       raise Puppet::Error, _('error: peer name property must be specified for VETH tunnel')
     end
   end
