@@ -69,8 +69,15 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     bond_slave_opts = [:state, :mii_status, :link_failure_count, :perm_hwaddr, :queue_id,
                        :ad_aggregator_id, :ad_actor_oper_port_state, :ad_partner_oper_port_state]
 
-    bridge_slave_opts = [:state, :mii_status, :link_failure_count, :perm_hwaddr, :queue_id, :ad_aggregator_id,
-                         :ad_actor_oper_port_state, :ad_partner_oper_port_state]
+    bridge_slave_opts = [:state, :priority, :cost,
+                         :hairpin, :guard, :root_block, :fastleave, :learning, :flood,
+                         :port_id, :port_no, :designated_port, :designated_cost, :designated_bridge,
+                         :designated_root, :hold_timer, :message_age_timer, :forward_delay_timer,
+                         :topology_change_ack, :config_pending,
+                         :proxy_arp, :proxy_arp_wifi,
+                         :mcast_router,
+                         :mcast_fast_leave, :mcast_flood,
+                        ]
 
     vlan_opts = [:protocol, :id]
     vlan_flags = [:reorder_hdr, :gvrp, :mvrp, :loose_binding, :bridge_binding]
@@ -167,14 +174,14 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
         vxlan_flags.each do |f|
           s = f.to_s
           i = options.index(s)
-          if i
-            if options[i + 1].to_s == 'no'
-              desc[link_kind][s] = false
-              options = options[0...i] + options[i + 2..-1]
-            else
-              desc[link_kind][s] = true
-              options.delete_at(i)
-            end
+          skip unless i
+
+          if options[i + 1].to_s == 'no'
+            desc[link_kind][s] = false
+            options = options[0...i] + options[i + 2..-1]
+          else
+            desc[link_kind][s] = true
+            options.delete_at(i)
           end
         end
 
@@ -199,10 +206,10 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
           vlan_flags.each do |f|
             s = f.to_s
             desc[link_kind][s] = if flags.include?(s)
-                              'on'
-                            else
-                              'off'
-                            end
+                                   'on'
+                                 else
+                                   'off'
+                                 end
           end
         end
         options.delete(m[0]) if m
