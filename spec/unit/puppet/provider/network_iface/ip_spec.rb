@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'ipaddr'
 
 describe Puppet::Type.type(:network_iface).provider(:ip) do
   let(:resource_name) { 'o-hm0' }
@@ -281,6 +282,30 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
       expect(provider.provider_show).to eq(
         {}
       )
+    }
+  end
+
+  describe 'check validation methods' do
+    subject(:provider) { described_class.new }
+
+    # good IP address
+    it {
+      expect(provider.validate_ip('192.168.178.2')).to eq(IPAddr.new('192.168.178.2'))
+    }
+
+    # wrong IP address
+    it {
+      expect(provider.validate_ip('192.168.178.400')).to eq(nil)
+    }
+
+    # good MAC address
+    it {
+      expect(provider.validate_mac('02:42:ac:11:00:03')).to eq(0)
+    }
+
+    # wrong MAC address
+    it {
+      expect(provider.validate_mac('02:42:ac:11:00:0z')).to eq(nil)
     }
   end
 end

@@ -1,5 +1,6 @@
 require 'json'
 require 'shellwords'
+require 'ipaddr'
 
 #
 class Puppet::Provider::NetworkSetup < Puppet::Provider
@@ -60,5 +61,25 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
   def self.brctl_caller(*args)
     system_caller(brctl_comm, *args)
+  end
+
+  def self.validate_ip(ip)
+    return nil unless ip
+    IPAddr.new(ip)
+  rescue ArgumentError
+    nil
+  end
+
+  def self.validate_mac(mac)
+    return nil unless mac
+    %r{^([a-f0-9]{2}[:-]){5}[a-f0-9]{2}$} =~ mac.downcase
+  end
+
+  def validate_ip(ip)
+    self.class.validate_ip(ip)
+  end
+
+  def validate_mac(mac)
+    self.class.validate_mac(mac)
   end
 end
