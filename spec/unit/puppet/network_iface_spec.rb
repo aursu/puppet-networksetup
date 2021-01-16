@@ -6,7 +6,7 @@ describe Puppet::Type.type(:network_iface) do
       expect {
         described_class.new(
           name: 'o-bhm0',
-          type: :veth,
+          link_kind: :veth,
           ensure: :present,
         )
       }.to raise_error(Puppet::Error, %r{error: peer name property must be specified for VETH tunnel})
