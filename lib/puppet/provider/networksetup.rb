@@ -162,4 +162,29 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       end
     end
   end
+
+  def self.device_type(type)
+    case type
+    when 'Ethernet', 'Wireless', 'Token Ring'
+      :eth
+    when 'CIPE'
+      :cipcb
+    when 'IPSEC'
+      :ipsec
+    when 'Modem', 'xDSL'
+      :ppp
+    when 'ISDN'
+      :ippp
+    when 'CTC'
+      :ctc
+    when 'GRE', 'IPIP', 'IPIP6'
+      :tunnel
+    when 'SIT', 'sit'
+      :sit
+    when 'InfiniBand', 'infiniband'
+      :ib
+    when %r{^OVS[A-Za-z]*$}
+      :ovs
+    end
+  end
 end
