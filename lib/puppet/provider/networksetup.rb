@@ -102,6 +102,9 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     if ifcfg && File.exist?(ifcfg)
       data = File.read(ifcfg)
       data.each_line do |line|
+        # skip comments
+        next if line =~ %r{^\s*#}
+
         p, v = line.split('=', 2)
         k = map[p]
         desc[k] = v.sub(%r{^['"]}, '').sub(%r{['"]$}, '') if k
