@@ -82,4 +82,32 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   def validate_mac(mac)
     self.class.validate_mac(mac)
   end
+
+  def self.parse_config(ifcfg)
+    desc = {}
+
+    map = {
+      'BOOTPROTO' => 'bootproto',
+      'BROADCAST' => 'broadcast',
+      'DEVICE'    => 'device',
+      'HWADDR'    => 'hwaddr',
+      'IPADDR'    => 'ipaddr',
+      'NAME'      => 'conn_name',
+      'NETMASK'   => 'netmask',
+      'NETWORK'   => 'network',
+      'ONBOOT'    => 'onboot',
+      'TYPE'      => 'conn_type',
+    }
+
+    if ifcfg && File.exist?(ifcfg)
+      data = File.read(ifcfg)
+      data.each_line do |line|
+        p, v = line.split('=', 2)
+        k = map[p]
+        desc[k] = v.sub(%r{^['"]}, '').sub(%r{['"]$}, '') if k
+      end
+    end
+
+    desc
+  end
 end
