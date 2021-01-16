@@ -157,7 +157,7 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
       expect(provider.provider_show).to eq(
         'addrgenmode' => 'eui64',
         'brd' => 'ff:ff:ff:ff:ff:ff',
-        'etype' => 'bridge_slave',
+        'slave-kind' => :bridge_slave,
         'group' => 'default',
         'gso_max_segs' => '65535',
         'gso_max_size' => '65536',

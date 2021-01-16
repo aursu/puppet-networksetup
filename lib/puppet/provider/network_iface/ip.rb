@@ -76,8 +76,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
                          :topology_change_ack, :config_pending,
                          :proxy_arp, :proxy_arp_wifi,
                          :mcast_router,
-                         :mcast_fast_leave, :mcast_flood,
-                        ]
+                         :mcast_fast_leave, :mcast_flood]
 
     vlan_opts = [:protocol, :id]
     vlan_flags = [:reorder_hdr, :gvrp, :mvrp, :loose_binding, :bridge_binding]
@@ -163,6 +162,9 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
       when :bridge
         desc['link-kind'] = link_kind
         link_kind_opts = bridge_opts
+      when :bridge_slave
+        desc['slave-kind'] = slave_kind
+        slave_kind_opts = bridge_slave_opts
       when :vxlan
         # srcport MIN MAX
         i = options.index('srcport')
@@ -177,10 +179,10 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
           skip unless i
 
           if options[i + 1].to_s == 'no'
-            desc[link_kind][s] = false
+            desc[link_kind][s] = 'no'
             options = options[0...i] + options[i + 2..-1]
           else
-            desc[link_kind][s] = true
+            desc[link_kind][s] = 'yes'
             options.delete_at(i)
           end
         end
@@ -192,7 +194,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
         link_kind_opts = bond_opts
       when :bond_slave
         # according to man 7 ip - ETYPE := [ TYPE | bridge_slave | bond_slave ]
-        desc['etype'] = link_kind
+        desc['slave-kind'] = link_kind
         link_kind_opts = bond_slave_opts
       when :vlan
         m = nil
@@ -221,7 +223,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
           s = f.to_s
           i = options.index(s)
           if i
-            desc[link_kind][s] = true
+            desc[link_kind][s] = 'on'
             options.delete_at(i)
           end
         end
@@ -249,22 +251,26 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     #    bridge_slave state disabled priority 32 cost 2 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8003 port_no 0x3 designated_port 32771 designated_cost 0 designated_bridge 8000.22:f0:e3:ea:e8:16 designated_root 8000.22:f0:e3:ea:e8:16 hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
     # rubocop:enable Metrics/LineLength
     if desc_lines.size > 3
-      etype, *options = desc_lines[3].split.map { |o| o.strip }
-      desc['etype'] = etype
+      slave_kind, *options = desc_lines[3].split.map { |o| o.strip }
 
-      etype = etype.to_sym
-      desc[etype] = {}
+      slave_kind = slave_kind.to_sym
+      desc[slave_kind] = {}
 
-      options = Hash[options.each_slice(2).to_a]
-
-      case etype
+      case slave_kind
       when :bridge_slave
-        bridge_slave_opts.each do |f|
-          s = f.to_s
-          desc[etype][s] = options[s].to_s if options[s]
-        end
+        desc['slave-kind'] = slave_kind
+        slave_kind_opts = bridge_slave_opts
+      when :bond_slave
+        # according to man 7 ip - ETYPE := [ TYPE | bridge_slave | bond_slave ]
+        desc['slave-kind'] = slave_kind
+        slave_kind_opts = bond_slave_opts
       end
 
+      options = Hash[options.each_slice(2).to_a]
+      slave_kind_opts.each do |f|
+        s = f.to_s
+        desc[slave_kind][s] = options[s].to_s if options[s]
+      end
       linkinfo_opts_next2.each do |o|
         s = o.to_s
         desc[s] = options[s].to_s if options[s]
