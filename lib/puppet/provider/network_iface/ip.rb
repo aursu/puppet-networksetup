@@ -58,6 +58,17 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     @config ||= self.class.config(device, conn_name)
   end
 
+  def config_path_new
+    name = @resource[:name]
+    device = @resource[:device]
+
+    sfx = device || name
+
+    # try to use existing configuration first
+    return config_path unless config_path.nil? || config_path.empty?
+    "/etc/sysconfig/network-scripts/ifcfg-#{sfx}"
+  end
+
   def ifcfg_data
     @data ||= self.class.parse_config(config_path)
   end
@@ -81,12 +92,22 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     provider_caller('-details', '-o', 'link', 'show', *args)
   end
 
-  def brctl_caller(*args)
-    self.class.system_caller(brctl_comm, *args)
+  def self.provider_list
+    # -o - output each record on a single line, replacing line feeds with the '\' character.
+    provider_caller('-details', '-o', 'link', 'show')
+  end
+
+  def self.interface_show(name)
+    cmdout = provider_show(name)
+    return {} if cmdout.nil?
+
+    interface_parse(cmdout)
   end
 
   # parse ip -details -o link show command output
-  def interface_show(name)
+  def self.interface_parse(cmdout)
+    return {} if cmdout.nil? || cmdout.empty?
+
     linkinfo_opts = [:mtu, :qdisc, :master, :state, :mode, :group, :qlen]
     linkinfo_flags = [:xdp]
     linkinfo_opts_next1 = ['link-netns', 'link-netnsid', 'new-netns', 'new-netnsid', 'new-ifindex', :protodown, :promiscuity, :minmtu, :maxmtu]
@@ -136,9 +157,6 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
     tun_opts = [:type, :pi, :vnet_hdr, :numqueues, :numdisabled, :persist, :user, :group]
     tun_flags = [:multi_queue]
-
-    cmdout = self.class.provider_show(name)
-    return {} if cmdout.nil?
 
     desc = {}
 
@@ -335,13 +353,54 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
   def provider_show
     name = @resource[:name]
+    @desc ||= self.class.interface_show(name)
+  end
 
-    @desc ||= interface_show(name)
+  def ifcfg_content
+    ifcfg_device    = @resource[:device]    || device
+    ifcfg_ipaddr    = @resource[:ipaddr]    || ipaddr
+    ifcfg_netmask   = @resource[:netmask]   || netmask
+    ifcfg_network   = @resource[:network]   || network
+    ifcfg_broadcast = @resource[:broadcast] || broadcast
+    ifcfg_onboot    = @resource[:onboot]    || onboot
+    ifcfg_name      = @resource[:conn_name] || conn_name
+    ifcfg_type      = @resource[:conn_type] || conn_type
+
+    ERB.new(<<-EOF, nil, '<>').result(binding).strip
+<% if ifcfg_device %>
+DEVICE=<%= ifcfg_device %>
+<% end %>
+<% if ifcfg_type %>
+TYPE=<%= ifcfg_type %>
+<% end %>
+<% if ifcfg_ipaddr %>
+IPADDR=<%= ifcfg_ipaddr %>
+<% end %>
+<% if ifcfg_netmask %>
+NETMASK=<%= ifcfg_netmask %>
+<% end %>
+<% if ifcfg_network %>
+NETWORK=<%= ifcfg_network %>
+<% end %>
+<% if ifcfg_broadcast %>
+BROADCAST=<%= ifcfg_broadcast %>
+<% end %>
+<% if ifcfg_onboot %>
+ONBOOT=<%= ifcfg_onboot %>
+<% end %>
+<% if ifcfg_name %>
+NAME=<%= ifcfg_name %>
+<% end %>
+  }
+EOF
   end
 
   def create
     name = @resource[:name]
     kind = @resource[:link_kind]
+
+    ifcfg = config_path_new
+    File.open(ifcfg, 'w', 0o600) { |f| f.write(ifcfg_content) }
 
     case kind
     when :veth
