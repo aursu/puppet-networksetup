@@ -107,7 +107,9 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
         p, v = line.split('=', 2)
         k = map[p]
-        desc[k] = v.sub(%r{^['"]}, '').sub(%r{['"]$}, '') if k
+        desc[k] = v.strip
+                   .sub(%r{^['"]}, '')
+                   .sub(%r{['"]$}, '') if k
       end
     end
 
