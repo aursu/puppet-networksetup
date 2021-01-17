@@ -1,7 +1,8 @@
 require 'spec_helper'
 require 'ipaddr'
 
-describe Puppet::Type.type(:network_iface).provider(:ip) do
+provider_class = Puppet::Type.type(:network_iface).provider(:ip)
+describe provider_class do
   let(:resource_name) { 'o-hm0' }
   let(:resource) do
     Puppet::Type.type(:network_iface).new(
@@ -309,6 +310,126 @@ describe Puppet::Type.type(:network_iface).provider(:ip) do
     # wrong MAC address
     it {
       expect(provider.validate_mac('02:42:ac:11:00:0z')).to eq(nil)
+    }
+  end
+
+  describe 'test loopback interface configuration parsing' do
+    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-lo') }
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-lo', 'w', 0o600) }
+
+    let(:resource_name) { 'lo' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+      )
+    end
+    let(:provider) do
+      provider = subject
+      provider.resource = resource
+      provider
+    end
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo')
+        .and_return(true)
+      allow(File).to receive(:read)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo')
+        .and_return(ifcfg_content)
+
+      expect(provider.ifcfg_data).to eq(
+        'broadcast' => '127.255.255.255',
+        'conn_name' => 'loopback',
+        'device'    => 'lo',
+        'ipaddr'    => '127.0.0.1',
+        'netmask'   => '255.0.0.0',
+        'network'   => '127.0.0.0',
+        'onboot'    => 'yes',
+      )
+
+      expect(provider.ifcfg_content).to eq(<<EOF)
+DEVICE=lo
+IPADDR=127.0.0.1
+NETMASK=255.0.0.0
+NETWORK=127.0.0.0
+BROADCAST=127.255.255.255
+ONBOOT=yes
+NAME=loopback
+EOF
+    }
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo')
+        .and_return(true)
+      allow(File).to receive(:read)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo')
+        .and_return(ifcfg_content)
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo', 'w', 0o600).and_return(ifcfg)
+
+      expect(ifcfg).to receive(:write)
+        .with(<<EOF)
+DEVICE=lo
+IPADDR=127.0.0.1
+NETMASK=255.0.0.0
+NETWORK=127.0.0.0
+BROADCAST=127.255.255.255
+ONBOOT=yes
+NAME=loopback
+EOF
+
+      provider.create
+    }
+  end
+
+  describe 'test different network settings pass' do
+    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-lo') }
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-lo', 'w', 0o600) }
+
+    let(:resource_name) { 'lo' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+        ipaddr: '127.0.0.53',
+        netmask: '255.255.255.224',
+        network: '127.0.0.32',
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      provider = subject
+      provider.resource = resource
+      provider
+    end
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo')
+        .and_return(true)
+      allow(File).to receive(:read)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo')
+        .and_return(ifcfg_content)
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo', 'w', 0o600).and_return(ifcfg)
+
+      expect(ifcfg).to receive(:write)
+        .with(<<EOF)
+DEVICE=lo
+IPADDR=127.0.0.53
+NETMASK=255.255.255.224
+NETWORK=127.0.0.32
+BROADCAST=127.255.255.255
+ONBOOT=yes
+NAME=loopback
+EOF
+
+      provider.create
     }
   end
 end
