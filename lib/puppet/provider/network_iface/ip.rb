@@ -368,7 +368,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_name      = @resource[:conn_name] || conn_name
     ifcfg_type      = @resource[:conn_type] || conn_type
 
-    ERB.new(<<-EOF, nil, '<>').result(binding).strip
+    ERB.new(<<-EOF, nil, '<>').result(binding)
 <% if ifcfg_device %>
 DEVICE=<%= ifcfg_device %>
 <% end %>
@@ -393,7 +393,6 @@ ONBOOT=<%= ifcfg_onboot %>
 <% if ifcfg_name %>
 NAME=<%= ifcfg_name %>
 <% end %>
-  }
 EOF
   end
 
@@ -401,8 +400,9 @@ EOF
     name = @resource[:name]
     kind = @resource[:link_kind]
 
-    ifcfg = config_path_new
-    File.open(ifcfg, 'w', 0o600) { |f| f.write(ifcfg_content) }
+    f = File.open(config_path_new, 'w', 0o600)
+    f.write(ifcfg_content)
+    f.close
 
     case kind
     when :veth
