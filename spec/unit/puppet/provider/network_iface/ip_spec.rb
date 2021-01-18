@@ -55,7 +55,7 @@ describe provider_class do
         .with('/sbin/ip -details -o link show ppp0')
         .and_return('207: ppp0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1400 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 3\    link/ppp  promiscuity 0 minmtu 0 maxmtu 0 \    ppp addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
-      expect(provider.provider_show).to eq(
+      expect(provider.linkinfo_show).to eq(
         'addrgenmode' => 'eui64',
         'group' => 'default',
         'gso_max_segs' => '65535',
@@ -101,7 +101,7 @@ describe provider_class do
         .with('/sbin/ip -details -o link show tun0')
         .and_return('220: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1406 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 500\    link/none  promiscuity 0 minmtu 68 maxmtu 65535 \    tun type tun pi off vnet_hdr off persist off addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
-      expect(provider.provider_show).to eq(
+      expect(provider.linkinfo_show).to eq(
         'addrgenmode' => 'eui64',
         'group' => 'default',
         'gso_max_segs' => '65535',
@@ -159,7 +159,7 @@ describe provider_class do
         .with('/sbin/ip -details -o link show tapcf33b841-6f')
         .and_return('17: tapcf33b841-6f@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue master brqfc32e1e1-6f state UP mode DEFAULT group default qlen 1000\    link/ether ca:8c:b2:ee:35:fd brd ff:ff:ff:ff:ff:ff link-netnsid 8 promiscuity 1 \    veth \    bridge_slave state forwarding priority 32 cost 2 hairpin off guard off root_block off fastleave off learning on flood on port_id 0x8003 port_no 0x3 designated_port 32771 designated_cost 0 designated_bridge 8000.16:e8:8a:82:ba:4e designated_root 8000.16:e8:8a:82:ba:4e hold_timer    0.00 message_age_timer    0.00 forward_delay_timer    0.00 topology_change_ack 0 config_pending 0 proxy_arp off proxy_arp_wifi off mcast_router 1 mcast_fast_leave off mcast_flood on addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
-      expect(provider.provider_show).to eq(
+      expect(provider.linkinfo_show).to eq(
         'addrgenmode' => 'eui64',
         'brd' => 'ff:ff:ff:ff:ff:ff',
         'slave-kind' => :bridge_slave,
@@ -236,7 +236,7 @@ describe provider_class do
         .with('/sbin/ip -details -o link show o-bhm0')
         .and_return('188: o-bhm0@o-hm0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000\    link/ether 5e:42:74:a2:8b:6e brd ff:ff:ff:ff:ff:ff promiscuity 0\    veth addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
 
-      expect(provider.provider_show).to eq(
+      expect(provider.linkinfo_show).to eq(
         'addrgenmode' => 'eui64',
         'brd' => 'ff:ff:ff:ff:ff:ff',
         'group' => 'default',
@@ -283,7 +283,7 @@ describe provider_class do
         .with('/sbin/ip -details -o link show o-bhm0')
         .and_return('')
 
-      expect(provider.provider_show).to eq(
+      expect(provider.linkinfo_show).to eq(
         {}
       )
     }
@@ -430,6 +430,129 @@ NAME=loopback
 EOF
 
       provider.create
+    }
+  end
+
+  describe 'show address for PPP interface' do
+    let(:resource_name) { 'ppp0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+      )
+    end
+    let(:provider) do
+      provider = subject
+      provider.resource = resource
+      provider
+    end
+
+    it {
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o addr show ppp0')
+        .and_return('633: ppp0    inet 192.168.53.13 peer 192.168.53.1/32 scope global ppp0\       valid_lft forever preferred_lft forever') # rubocop:disable Metrics/LineLength
+
+      expect(provider.addrinfo_show).to eq([
+        {
+          'ifa_family' => 'inet',
+          'ifa_index' => '633',
+          'ifa_label' => 'ppp0',
+          'ifname' => 'ppp0',
+          'local' => '192.168.53.13',
+          'peer' => '192.168.53.1',
+          'preferred_lft' => 'forever',
+          'prefixlen' => '32',
+          'scope' => 'global',
+          'valid_lft' => 'forever',
+        }
+      ])
+    }
+  end
+
+  describe 'show address for ETH interface' do
+    let(:resource_name) { 'eth0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+      )
+    end
+    let(:provider) do
+      provider = subject
+      provider.resource = resource
+      provider
+    end
+
+    it {
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o addr show eth0')
+        .and_return(<<'EOL')
+4: eth0    inet 192.168.0.10/24 brd 192.168.0.255 scope global eth0\       valid_lft forever preferred_lft forever
+4: eth0    inet6 fe80::250:56ff:fea5:bc68/64 scope link \       valid_lft forever preferred_lft forever
+EOL
+
+      expect(provider.addrinfo_show).to eq([
+        {
+          'brd' => '192.168.0.255',
+          'ifa_family' => 'inet',
+          'ifa_index' => '4',
+          'ifa_label' => 'eth0',
+          'ifname' => 'eth0',
+          'local' => '192.168.0.10',
+          'preferred_lft' => 'forever',
+          'prefixlen' => '24',
+          'scope' => 'global',
+          'valid_lft' => 'forever',
+        },
+        {
+          'ifa_family' => 'inet6',
+          'ifa_index' => '4',
+          'ifname' => 'eth0',
+          'local' => 'fe80::250:56ff:fea5:bc68',
+          'preferred_lft' => 'forever',
+          'prefixlen' => '64',
+          'scope' => 'link',
+          'valid_lft' => 'forever',
+        }
+      ])
+    }
+  end
+
+  # 2: eth0    inet 192.168.178.200/24 brd 192.168.178.255 scope global dynamic eth0\       valid_lft 663759sec preferred_lft 663759sec
+  describe 'show address for ETH interface with flag' do
+    let(:resource_name) { 'eth0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+      )
+    end
+    let(:provider) do
+      provider = subject
+      provider.resource = resource
+      provider
+    end
+
+    it {
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o addr show eth0')
+        .and_return('2: eth0    inet 192.168.178.200/24 brd 192.168.178.255 scope global dynamic eth0\       valid_lft 663759sec preferred_lft 663759sec')
+
+      expect(provider.addrinfo_show).to eq([
+        {
+          'brd' => '192.168.178.255',
+          'dynamic' => 'on',
+          'ifa_family' => 'inet',
+          'ifa_index' => '2',
+          'ifa_label' => 'eth0',
+          'ifname' => 'eth0',
+          'local' => '192.168.178.200',
+          'preferred_lft' => '663759sec',
+          'prefixlen' => '24',
+          'scope' => 'global',
+          'valid_lft' => '663759sec',
+        }
+      ])
     }
   end
 end
