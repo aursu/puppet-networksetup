@@ -451,7 +451,7 @@ EOF
     it {
       allow(Puppet::Util::Execution).to receive(:execute)
         .with('/sbin/ip -details -o addr show ppp0')
-        .and_return('633: ppp0    inet 192.168.53.13 peer 192.168.53.1/32 scope global ppp0\       valid_lft forever preferred_lft forever') # rubocop:disable Metrics/LineLength
+        .and_return('633: ppp0    inet 192.168.53.13 peer 192.168.53.1/32 scope global ppp0\       valid_lft forever preferred_lft forever')
 
       expect(provider.addrinfo_show).to eq(
         [
