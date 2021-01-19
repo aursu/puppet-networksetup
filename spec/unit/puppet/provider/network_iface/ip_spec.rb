@@ -27,6 +27,7 @@ describe provider_class do
 
   describe 'new veth interface' do
     let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-o-hm0', 'w', 0o600) }
+
     it do
       allow(File).to receive(:open)
         .with('/etc/sysconfig/network-scripts/ifcfg-o-hm0', 'w', 0o600).and_return(ifcfg)
@@ -452,20 +453,22 @@ EOF
         .with('/sbin/ip -details -o addr show ppp0')
         .and_return('633: ppp0    inet 192.168.53.13 peer 192.168.53.1/32 scope global ppp0\       valid_lft forever preferred_lft forever') # rubocop:disable Metrics/LineLength
 
-      expect(provider.addrinfo_show).to eq([
-        {
-          'ifa_family' => 'inet',
-          'ifa_index' => '633',
-          'ifa_label' => 'ppp0',
-          'ifname' => 'ppp0',
-          'local' => '192.168.53.13',
-          'peer' => '192.168.53.1',
-          'preferred_lft' => 'forever',
-          'prefixlen' => '32',
-          'scope' => 'global',
-          'valid_lft' => 'forever',
-        }
-      ])
+      expect(provider.addrinfo_show).to eq(
+        [
+          {
+            'ifa_family' => 'inet',
+            'ifa_index' => '633',
+            'ifa_label' => 'ppp0',
+            'ifname' => 'ppp0',
+            'local' => '192.168.53.13',
+            'peer' => '192.168.53.1',
+            'preferred_lft' => 'forever',
+            'prefixlen' => '32',
+            'scope' => 'global',
+            'valid_lft' => 'forever',
+          },
+        ],
+      )
     }
   end
 
@@ -491,30 +494,32 @@ EOF
 4: eth0    inet6 fe80::250:56ff:fea5:bc68/64 scope link \       valid_lft forever preferred_lft forever
 EOL
 
-      expect(provider.addrinfo_show).to eq([
-        {
-          'brd' => '192.168.0.255',
-          'ifa_family' => 'inet',
-          'ifa_index' => '4',
-          'ifa_label' => 'eth0',
-          'ifname' => 'eth0',
-          'local' => '192.168.0.10',
-          'preferred_lft' => 'forever',
-          'prefixlen' => '24',
-          'scope' => 'global',
-          'valid_lft' => 'forever',
-        },
-        {
-          'ifa_family' => 'inet6',
-          'ifa_index' => '4',
-          'ifname' => 'eth0',
-          'local' => 'fe80::250:56ff:fea5:bc68',
-          'preferred_lft' => 'forever',
-          'prefixlen' => '64',
-          'scope' => 'link',
-          'valid_lft' => 'forever',
-        }
-      ])
+      expect(provider.addrinfo_show).to eq(
+        [
+          {
+            'brd' => '192.168.0.255',
+            'ifa_family' => 'inet',
+            'ifa_index' => '4',
+            'ifa_label' => 'eth0',
+            'ifname' => 'eth0',
+            'local' => '192.168.0.10',
+            'preferred_lft' => 'forever',
+            'prefixlen' => '24',
+            'scope' => 'global',
+            'valid_lft' => 'forever',
+          },
+          {
+            'ifa_family' => 'inet6',
+            'ifa_index' => '4',
+            'ifname' => 'eth0',
+            'local' => 'fe80::250:56ff:fea5:bc68',
+            'preferred_lft' => 'forever',
+            'prefixlen' => '64',
+            'scope' => 'link',
+            'valid_lft' => 'forever',
+          },
+        ],
+      )
     }
   end
 
@@ -538,21 +543,23 @@ EOL
         .with('/sbin/ip -details -o addr show eth0')
         .and_return('2: eth0    inet 192.168.178.200/24 brd 192.168.178.255 scope global dynamic eth0\       valid_lft 663759sec preferred_lft 663759sec')
 
-      expect(provider.addrinfo_show).to eq([
-        {
-          'brd' => '192.168.178.255',
-          'dynamic' => 'on',
-          'ifa_family' => 'inet',
-          'ifa_index' => '2',
-          'ifa_label' => 'eth0',
-          'ifname' => 'eth0',
-          'local' => '192.168.178.200',
-          'preferred_lft' => '663759sec',
-          'prefixlen' => '24',
-          'scope' => 'global',
-          'valid_lft' => '663759sec',
-        }
-      ])
+      expect(provider.addrinfo_show).to eq(
+        [
+          {
+            'brd' => '192.168.178.255',
+            'dynamic' => 'on',
+            'ifa_family' => 'inet',
+            'ifa_index' => '2',
+            'ifa_label' => 'eth0',
+            'ifname' => 'eth0',
+            'local' => '192.168.178.200',
+            'preferred_lft' => '663759sec',
+            'prefixlen' => '24',
+            'scope' => 'global',
+            'valid_lft' => '663759sec',
+          },
+        ],
+      )
     }
   end
 end
