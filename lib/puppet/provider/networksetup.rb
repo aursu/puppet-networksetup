@@ -69,7 +69,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     ip_caller('-details', '-o', 'addr', 'show', *args)
   end
 
-  def self.addr_list(*args)
+  def self.addr_list
     ip_caller('-details', '-o', 'addr', 'show')
   end
 
@@ -330,7 +330,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
     addr = []
 
-    cmdout.each_line { |a|
+    cmdout.each_line do |a|
       desc_lines = a.split('\\').map { |l| l.strip }
 
       desc = {}
@@ -365,7 +365,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       end
 
       # check and set address label
-      if options.size % 2 == 1
+      if (options.size % 2).odd?
         desc['ifa_label'] = options.pop
       end
 
@@ -382,7 +382,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
         desc[s] = options[s].to_s if options[s]
       end
       addr += [desc]
-    }
+    end
 
     addr
   end
@@ -462,30 +462,37 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     desc = {}
 
     map = {
+      'ARPCHECK'  => 'arpcheck',
       'BOOTPROTO' => 'bootproto',
       'BROADCAST' => 'broadcast',
       'DEVICE'    => 'device',
       'HWADDR'    => 'hwaddr',
       'IPADDR'    => 'ipaddr',
+      'IPV6ADDR'  => 'ipv6addr',
+      'IPV6INIT'  => 'ipv6init',
       'NAME'      => 'conn_name',
       'NETMASK'   => 'netmask',
       'NETWORK'   => 'network',
       'ONBOOT'    => 'onboot',
+      'PREFIX'    => 'prefix',
       'TYPE'      => 'conn_type',
     }
 
-    if ifcfg && File.exist?(ifcfg)
-      data = File.read(ifcfg)
-      data.each_line do |line|
-        # skip comments
-        next if line =~ %r{^\s*#}
+    return {} unless ifcfg && File.exist?(ifcfg)
 
-        p, v = line.split('=', 2)
-        k = map[p]
-        desc[k] = v.strip
-                   .sub(%r{^['"]}, '')
-                   .sub(%r{['"]$}, '') if k
-      end
+    data = File.read(ifcfg)
+    data.each_line do |line|
+      # skip comments
+      next if line =~ %r{^\s*#}
+
+      p, v = line.split('=', 2)
+      k = map[p]
+
+      next unless k
+
+      desc[k] = v.strip
+                 .sub(%r{^['"]}, '')
+                 .sub(%r{['"]$}, '')
     end
 
     desc
@@ -522,16 +529,20 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.mk_resource_methods
-    [:bootproto,
+    [:arpcheck,
+     :bootproto,
      :broadcast,
      :conn_name,
      :conn_type,
      :device,
      :hwaddr,
      :ipaddr,
+     :ipv6addr,
+     :ipv6init,
      :netmask,
      :network,
-     :onboot].each do |attr|
+     :onboot,
+     :prefix].each do |attr|
       define_method(attr) do
         ifcfg_data[attr.to_s]
       end
