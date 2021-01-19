@@ -11,13 +11,52 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def config_path
-    name = @resource[:name]
     device = @resource[:device]
 
-    dev, devnum = name.split(':', 2)
-    devnum = name unless devnum
-    dev = device if device
+    "/etc/sysconfig/network-scripts/ifcfg-#{device}"
+  end
 
-    "/etc/sysconfig/network-scripts/ifcfg-#{dev}:#{devnum}"
+  def ifcfg_data
+    @data ||= self.class.parse_config(config_path)
+  end
+
+  mk_resource_methods
+
+  def ipv6addr_secondaries
+    ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip }
+  end
+
+  def ifcfg_content
+    ifcfg_device    = @resource[:device]   || device
+    ifcfg_ipaddr    = @resource[:ipaddr]   || ipaddr
+    ifcfg_netmask   = @resource[:netmask]  || netmask
+    ifcfg_ipv6addr  = @resource[:ipv6addr] || ipv6addr
+    ifcfg_ipv6init  = @resource[:ipv6init] || ipv6init
+    ifcfg_prefix    = @resource[:prefix]   || prefix
+    ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
+
+    ERB.new(<<-EOF, nil, '<>').result(binding)
+<% if ifcfg_device %>
+DEVICE=<%= ifcfg_device %>
+<% end %>
+<% if ifcfg_ipaddr %>
+IPADDR=<%= ifcfg_ipaddr %>
+<% end %>
+<% if ifcfg_netmask %>
+NETMASK=<%= ifcfg_netmask %>
+<% end %>
+<% if ifcfg_prefix %>
+PREFIX=<%= ifcfg_prefix %>
+<% end %>
+<% if ifcfg_ipv6addr %>
+IPV6ADDR=<%= ifcfg_ipv6addr %>
+<% end %>
+<% if ifcfg_ipv6init %>
+IPV6INIT=<%= ifcfg_ipv6init %>
+<% end %>
+<% if ipv6addr_secondaries %>
+IPV6ADDR_SECONDARIES="<%= [ipv6addr_secondaries].flatten.join(' ') %>"
+<% end %>
+EOF
   end
 end
