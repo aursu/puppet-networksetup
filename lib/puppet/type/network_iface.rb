@@ -11,6 +11,10 @@ Puppet::Type.newtype(:network_iface) do
 
   newparam(:name, namevar: true) do
     desc 'Interface name. In use to lookup ifcgf script inside /etc/sysconfig/network-scripts'
+
+    validate do |val|
+      raise Puppet::Error, _("error: invalid interface name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
+    end
   end
 
   newproperty(:link_kind) do
@@ -59,6 +63,10 @@ Puppet::Type.newtype(:network_iface) do
     desc 'Device ID from network script (DEVICE)'
 
     defaultto { @resource[:name] }
+
+    validate do |val|
+      raise Puppet::Error, _("error: invalid device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
+    end
   end
 
   newproperty(:hwaddr) do
@@ -81,11 +89,52 @@ Puppet::Type.newtype(:network_iface) do
     end
   end
 
+  newproperty(:ipv6init) do
+    desc 'ipv6init flag from device network script (IPV6INIT)'
+
+    newvalues('yes', 'no', true, false, :yes, :no, :true, :false)
+
+    munge do |val|
+      case val
+      when true, :true
+        'yes'
+      when false, :false
+        'no'
+      else
+        val
+      end
+    end
+  end
+
+  newproperty(:ipv6addr) do
+    desc 'Alias IPv6 address from network script (IPV6ADDR)'
+
+    validate do |val|
+      raise Puppet::ParseError, _('ipv6addr must be a valid IP address') unless provider.validate_ip(val)
+    end
+  end
+
+  newproperty(:ipv6addr_secondaries, array_matching: :all) do
+    desc 'Alias IPv6 address from network script (IPV6ADDR)'
+
+    validate do |val|
+      raise Puppet::ParseError, _('ipv6addr_secondaries must be an array of valid IP addresses') unless provider.validate_ip(val)
+    end
+  end
+
   newproperty(:netmask) do
     desc 'Device network mask from network script (NETMASK)'
 
     validate do |val|
       raise Puppet::ParseError, _('network_iface :netmask must be a valid IP address') unless provider.validate_ip(val)
+    end
+  end
+
+  newproperty(:prefix) do
+    desc 'Alias prefix  network script (NETMASK)'
+
+    validate do |val|
+      raise Puppet::ParseError, _('prefix must be an integer between 8 and 32') unless Integer(val) >= 1 && Integer(val) <= 128
     end
   end
 
@@ -99,6 +148,8 @@ Puppet::Type.newtype(:network_iface) do
 
   newproperty(:onboot) do
     desc 'onboot flag from device network script (ONBOOT)'
+
+    defaultto 'yes'
 
     newvalues('yes', 'no', true, false, :yes, :no, :true, :false)
 
@@ -115,6 +166,34 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   validate do
+    raise Puppet::Error, _("error: didn't specify device") unless self[:device]
+
+    # setup IP mask depends on IPv6/IPv4 address
+    if self[:ipaddr]
+      fullmask = '255.255.255.255'
+      maxprefix = 32
+      anyaddr = '0.0.0.0'
+      _addr, prefix = self[:ipaddr].split('/', 2)
+    elsif self[:ipv6addr] && self[:ipv6init] == 'yes'
+      fullmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'
+      maxprefix = 128
+      anyaddr = '::'
+      _addr, prefix = self[:ipv6addr].split('/', 2)
+    end
+
+    if self[:ipaddr] || (self[:ipv6init] && self[:ipv6init] == 'yes')
+      if self[:netmask]
+        self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
+      elsif self[:prefix] || prefix
+        self[:prefix] = prefix unless self[:prefix]
+        self[:netmask] = IPAddr.new(fullmask).mask(self[:prefix].to_i).to_s
+      else
+        self[:netmask] = fullmask
+        self[:prefix] = maxprefix
+      end
+    end
+
+    # plugins specifics
     if self[:link_kind] == :veth && (self[:peer_name] == :absent || self[:peer_name].nil?)
       raise Puppet::Error, _('error: peer name property must be specified for VETH tunnel')
     end

@@ -5,7 +5,7 @@ describe Puppet::Type.type(:network_alias) do
     it do
       expect {
         described_class.new(
-          name: 'alias',
+          title: 'alias',
           ensure: :present,
         )
       }.to raise_error(Puppet::Error, %r{error: didn't specify device})
@@ -16,8 +16,8 @@ describe Puppet::Type.type(:network_alias) do
     it do
       expect {
         described_class.new(
-          name: 'alias',
-          device: 'lo',
+          title: 'alias',
+          device: 'lo:alias2',
           ensure: :present,
         )
       }.to raise_error(Puppet::Error, %r{error: didn't specify ipaddr and ipv6addr address})
@@ -26,7 +26,7 @@ describe Puppet::Type.type(:network_alias) do
     it do
       expect {
         described_class.new(
-          name: 'eth0:alias',
+          title: 'eth0:alias',
           ensure: :present,
         )
       }.to raise_error(Puppet::Error, %r{error: didn't specify ipaddr and ipv6addr address})
@@ -37,7 +37,7 @@ describe Puppet::Type.type(:network_alias) do
     it do
       expect {
         described_class.new(
-          name: 'eth1:alias',
+          title: 'eth1:alias',
           ensure: :present,
           ipaddr: '192.168.0.5',
           provider: :ip,

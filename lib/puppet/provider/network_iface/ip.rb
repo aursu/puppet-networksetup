@@ -59,6 +59,10 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_onboot    = @resource[:onboot]    || onboot
     ifcfg_name      = @resource[:conn_name] || conn_name
     ifcfg_type      = @resource[:conn_type] || conn_type
+    ifcfg_ipv6addr  = @resource[:ipv6addr]  || ipv6addr
+    ifcfg_ipv6init  = @resource[:ipv6init]  || ipv6init
+    ifcfg_prefix    = @resource[:prefix]    || prefix
+    ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
 
     ERB.new(<<-EOF, nil, '<>').result(binding)
 <% if ifcfg_device %>
@@ -84,6 +88,18 @@ ONBOOT=<%= ifcfg_onboot %>
 <% end %>
 <% if ifcfg_name %>
 NAME=<%= ifcfg_name %>
+<% end %>
+<% if ifcfg_prefix %>
+PREFIX=<%= ifcfg_prefix %>
+<% end %>
+<% if ifcfg_ipv6addr %>
+IPV6ADDR=<%= ifcfg_ipv6addr %>
+<% end %>
+<% if ifcfg_ipv6init %>
+IPV6INIT=<%= ifcfg_ipv6init %>
+<% end %>
+<% if ipv6addr_secondaries %>
+IPV6ADDR_SECONDARIES="<%= [ipv6addr_secondaries].flatten.join(' ') %>"
 <% end %>
 EOF
   end

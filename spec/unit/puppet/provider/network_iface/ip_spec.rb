@@ -428,6 +428,7 @@ NETWORK=127.0.0.32
 BROADCAST=127.255.255.255
 ONBOOT=yes
 NAME=loopback
+PREFIX=27
 EOF
 
       provider.create
