@@ -17,6 +17,10 @@ Puppet::Type.newtype(:network_iface) do
     end
   end
 
+  newproperty(:conn_name) do
+    desc 'Device name from network script (NAME)'
+  end
+
   newproperty(:link_kind) do
     desc 'Device link type'
 
@@ -43,10 +47,6 @@ Puppet::Type.newtype(:network_iface) do
     validate do |val|
       raise Puppet::ParseError, _('network_iface :broadcast must be a valid IP address') unless provider.validate_ip(val)
     end
-  end
-
-  newproperty(:conn_name) do
-    desc 'Device name from network script (NAME)'
   end
 
   newproperty(:conn_type) do
@@ -166,8 +166,6 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   validate do
-    raise Puppet::Error, _("error: didn't specify device") unless self[:device]
-
     # setup IP mask depends on IPv6/IPv4 address
     if self[:ipaddr]
       fullmask = '255.255.255.255'
