@@ -63,14 +63,14 @@ EOF
   def create
     ifcfg_type = @resource[:conn_type] || conn_type
 
-    f = File.open(config_path_new, 'w', 0o600)
+    f = File.open(config_path, 'w', 0o600)
     f.write(ifcfg_content)
     f.close
 
     return unless ifcfg_type
 
     ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
-    system_caller("ifup #{config_path_new}")
+    self.class.system_caller('ifup', config_path)
   end
 
   def flush
