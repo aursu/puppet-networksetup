@@ -105,12 +105,9 @@ EOF
   end
 
   def create
-    name = @resource[:name]
-    kind = @resource[:link_kind]
-
-    f = File.open(config_path_new, 'w', 0o600)
-    f.write(ifcfg_content)
-    f.close
+    name       = @resource[:name]
+    kind       = @resource[:link_kind]
+    ifcfg_type = @resource[:conn_type] || conn_type
 
     case kind
     when :veth
@@ -118,6 +115,15 @@ EOF
       # ip link add o-hm0 type veth peer name o-bhm0
       self.class.link_create(name, 'type', 'veth', 'peer', 'name', peer)
     end
+
+    f = File.open(config_path_new, 'w', 0o600)
+    f.write(ifcfg_content)
+    f.close
+
+    return unless ifcfg_type
+
+    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
+    system_caller("ifup #{config_path_new}")
   end
 
   def link_kind
@@ -169,5 +175,15 @@ EOF
 
   def flush
     return if @property_flush.empty?
+    ifcfg_type = @resource[:conn_type] || conn_type
+
+    f = File.open(config_path_new, 'w', 0o600)
+    f.write(ifcfg_content)
+    f.close
+
+    return unless ifcfg_type
+
+    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
+    system_caller("ifup #{config_path_new}")
   end
 end

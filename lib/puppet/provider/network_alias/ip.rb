@@ -59,4 +59,22 @@ IPV6ADDR_SECONDARIES="<%= [ipv6addr_secondaries].flatten.join(' ') %>"
 <% end %>
 EOF
   end
+
+  def create
+    ifcfg_type = @resource[:conn_type] || conn_type
+
+    f = File.open(config_path_new, 'w', 0o600)
+    f.write(ifcfg_content)
+    f.close
+
+    return unless ifcfg_type
+
+    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
+    system_caller("ifup #{config_path_new}")
+  end
+
+  def flush
+    return if @property_flush.empty?
+    create
+  end
 end
