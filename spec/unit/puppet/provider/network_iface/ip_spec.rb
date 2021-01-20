@@ -20,8 +20,9 @@ describe provider_class do
   end
 
   before(:each) do
-    allow(Puppet::Util).to receive(:which).with('ip').and_return('/sbin/ip')
+    allow(Puppet::Util).to receive(:which).and_call_original
     allow(Puppet::Util).to receive(:which).with('/sbin/ip').and_return('/sbin/ip')
+    allow(Puppet::Util).to receive(:which).with('ifup').and_return('/etc/sysconfig/network-scripts/ifup')
     allow(described_class).to receive(:which).with('ip').and_return('/sbin/ip')
   end
 
@@ -399,6 +400,7 @@ EOF
         ipaddr: '127.0.0.53',
         netmask: '255.255.255.224',
         network: '127.0.0.32',
+        conn_type: 'Ethernet',
         provider: :ip,
       )
     end
@@ -422,6 +424,7 @@ EOF
       expect(ifcfg).to receive(:write)
         .with(<<EOF)
 DEVICE=lo
+TYPE=Ethernet
 IPADDR=127.0.0.53
 NETMASK=255.255.255.224
 NETWORK=127.0.0.32
@@ -430,6 +433,9 @@ ONBOOT=yes
 NAME=loopback
 PREFIX=27
 EOF
+
+      expect(Puppet::Util::Execution).to receive(:execute)
+        .with('/etc/sysconfig/network-scripts/ifup /etc/sysconfig/network-scripts/ifcfg-lo')
 
       provider.create
     }
