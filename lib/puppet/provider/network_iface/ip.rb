@@ -123,7 +123,7 @@ EOF
     return unless ifcfg_type
 
     ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
-    system_caller("ifup #{config_path_new}")
+    self.class.system_caller('ifup', config_path_new)
   end
 
   def link_kind
@@ -184,6 +184,6 @@ EOF
     return unless ifcfg_type
 
     ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
-    system_caller("ifup #{config_path_new}")
+    self.class.system_caller('ifup', config_path_new)
   end
 end
