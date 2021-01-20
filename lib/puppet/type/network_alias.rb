@@ -35,6 +35,16 @@ Puppet::Type.newtype(:network_alias) do
     end
   end
 
+  newproperty(:conn_type) do
+    desc 'Device type from network script (TYPE)'
+
+    newvalues('Ethernet', 'CIPE', 'IPSEC', 'Modem', 'xDSL', 'ISDN',
+              'Wireless', 'Token Ring', 'CTC', 'GRE', 'IPIP', 'IPIP6', 'SIT',
+              'sit', 'InfiniBand', 'infiniband', 'Bridge', 'Tap',
+              # https://github.com/openvswitch/ovs/blob/master/rhel/README.RHEL.rst
+              %r{^OVS[A-Za-z]*$})
+  end
+
   newproperty(:parent_device) do
     desc 'Device ID from network script (DEVICE)'
 

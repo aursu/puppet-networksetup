@@ -128,4 +128,65 @@ EOL
       }
     end
   end
+
+  describe 'test different network settings pass' do
+    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-lo:alias6') }
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-lo:alias6', 'w', 0o600) }
+
+    let(:resource_name) { 'alias6' }
+    let(:resource) do
+      Puppet::Type.type(:network_alias).new(
+        name: resource_name,
+        parent_device: 'lo',
+        ensure: :present,
+        ipaddr: '192.168.178.1',
+        netmask: '255.255.255.224',
+        conn_type: 'Ethernet',
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo:alias6')
+        .and_return(true)
+      allow(File).to receive(:read)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo:alias6')
+        .and_return(ifcfg_content)
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-lo:alias6', 'w', 0o600).and_return(ifcfg)
+      allow(Puppet::Util).to receive(:which)
+        .with('ifup').and_return('/etc/sysconfig/network-scripts/ifup')
+
+        expect(provider.ifcfg_data).to eq(
+          'device'    => 'lo:alias6',
+          'ipaddr'    => '192.168.178.1',
+          'netmask'   => '255.255.255.224',
+          'ipv6addr'  => '2001:1810:4240:3::17/128',
+          'ipv6addr_secondaries' => '2001:1810:4240:3::1/128 2001:1810:4240:3::2/128 2001:1810:4240:3::3/128',
+          'ipv6init'  => 'yes',
+        )
+
+      expect(ifcfg).to receive(:write)
+        .with(<<EOF)
+DEVICE=lo:alias6
+TYPE=Ethernet
+IPADDR=192.168.178.1
+NETMASK=255.255.255.224
+PREFIX=27
+IPV6ADDR=2001:1810:4240:3::17/128
+IPV6INIT=yes
+IPV6ADDR_SECONDARIES="2001:1810:4240:3::1/128 2001:1810:4240:3::2/128 2001:1810:4240:3::3/128"
+EOF
+
+      expect(Puppet::Util::Execution).to receive(:execute)
+        .with('/etc/sysconfig/network-scripts/ifup /etc/sysconfig/network-scripts/ifcfg-lo:alias6')
+
+      provider.create
+    }
+  end
 end

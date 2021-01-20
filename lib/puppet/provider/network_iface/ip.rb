@@ -50,6 +50,10 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     @addr ||= self.class.addrinfo_show(name)
   end
 
+  def ipv6addr_secondaries
+    ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
+  end
+
   def ifcfg_content
     ifcfg_device    = @resource[:device]    || device
     ifcfg_ipaddr    = @resource[:ipaddr]    || ipaddr
@@ -62,7 +66,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_ipv6addr  = @resource[:ipv6addr]  || ipv6addr
     ifcfg_ipv6init  = @resource[:ipv6init]  || ipv6init
     ifcfg_prefix    = @resource[:prefix]    || prefix
-    ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
+    ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
 
     ERB.new(<<-EOF, nil, '<>').result(binding)
 <% if ifcfg_device %>
@@ -98,8 +102,8 @@ IPV6ADDR=<%= ifcfg_ipv6addr %>
 <% if ifcfg_ipv6init %>
 IPV6INIT=<%= ifcfg_ipv6init %>
 <% end %>
-<% if ipv6addr_secondaries %>
-IPV6ADDR_SECONDARIES="<%= [ipv6addr_secondaries].flatten.join(' ') %>"
+<% if ifcfg_ipv6addr_secondaries %>
+IPV6ADDR_SECONDARIES="<%= [ifcfg_ipv6addr_secondaries].flatten.join(' ') %>"
 <% end %>
 EOF
   end
