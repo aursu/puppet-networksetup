@@ -27,14 +27,14 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def ifcfg_content
-    ifcfg_device    = @resource[:device]   || device
-    ifcfg_ipaddr    = @resource[:ipaddr]   || ipaddr
-    ifcfg_netmask   = @resource[:netmask]  || netmask
-    ifcfg_ipv6addr  = @resource[:ipv6addr] || ipv6addr
-    ifcfg_ipv6init  = @resource[:ipv6init] || ipv6init
-    ifcfg_prefix    = @resource[:prefix]   || prefix
+    ifcfg_device = @resource[:device] || device
+    ifcfg_ipaddr = @resource[:ipaddr] || ipaddr
+    ifcfg_netmask = @resource[:netmask] || netmask
+    ifcfg_ipv6addr = @resource[:ipv6addr] || ipv6addr
+    ifcfg_ipv6init = @resource[:ipv6init] || ipv6init
+    ifcfg_prefix = @resource[:prefix] || prefix
     ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
-    ifcfg_type      = @resource[:conn_type] || conn_type
+    ifcfg_type = @resource[:conn_type] || conn_type
 
     ERB.new(<<-EOF, nil, '<>').result(binding)
 <% if ifcfg_device %>

@@ -162,14 +162,14 @@ EOL
       allow(Puppet::Util).to receive(:which)
         .with('ifup').and_return('/etc/sysconfig/network-scripts/ifup')
 
-        expect(provider.ifcfg_data).to eq(
-          'device'    => 'lo:alias6',
-          'ipaddr'    => '192.168.178.1',
-          'netmask'   => '255.255.255.224',
-          'ipv6addr'  => '2001:1810:4240:3::17/128',
-          'ipv6addr_secondaries' => '2001:1810:4240:3::1/128 2001:1810:4240:3::2/128 2001:1810:4240:3::3/128',
-          'ipv6init'  => 'yes',
-        )
+      expect(provider.ifcfg_data).to eq(
+        'device' => 'lo:alias6',
+        'ipaddr' => '192.168.178.1',
+        'netmask' => '255.255.255.224',
+        'ipv6addr' => '2001:1810:4240:3::17/128',
+        'ipv6addr_secondaries' => '2001:1810:4240:3::1/128 2001:1810:4240:3::2/128 2001:1810:4240:3::3/128',
+        'ipv6init' => 'yes',
+      )
 
       expect(ifcfg).to receive(:write)
         .with(<<EOF)
