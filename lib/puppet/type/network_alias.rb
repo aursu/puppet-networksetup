@@ -116,6 +116,10 @@ Puppet::Type.newtype(:network_alias) do
     validate do |val|
       raise Puppet::ParseError, _('prefix must be an integer between 8 and 32') unless Integer(val) >= 1 && Integer(val) <= 128
     end
+
+    munge do |val|
+      Integer(val)
+    end
   end
 
   validate do
