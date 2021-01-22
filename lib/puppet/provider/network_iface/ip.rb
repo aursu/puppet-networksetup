@@ -35,14 +35,14 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def ifcfg_data
-    @data ||= self.class.parse_config(config_path)
+    @addrinfo ||= self.class.parse_config(config_path)
   end
 
   mk_resource_methods
 
   def linkinfo_show
     name = @resource[:name]
-    @desc ||= self.class.linkinfo_show(name)
+    @linkinfo ||= self.class.linkinfo_show(name)
   end
 
   def addrinfo_show
