@@ -65,6 +65,14 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     ip_caller('-details', '-o', 'link', 'show')
   end
 
+  def self.addr_create(*args)
+    ip_caller('addr', 'add', *args)
+  end
+
+  def self.addr_delete(addr, dev)
+    ip_caller('addr', 'del', addr, 'dev', dev)
+  end
+
   def self.addr_show(*args)
     ip_caller('-details', '-o', 'addr', 'show', *args)
   end
@@ -126,6 +134,12 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
     tun_opts = [:type, :pi, :vnet_hdr, :numqueues, :numdisabled, :persist, :user, :group]
     tun_flags = [:multi_queue]
+
+    iptun_opts = [:remote, :local, :dev, :ttl, :tos, '6rd-prefix', '6rd-relay_prefix', :encap, 'encap-sport', 'encap-dport']
+    iptun_flags = [:pmtudisc, :nopmtudisc, :isatap, 'encap-csum', 'noencap-csum', 'encap-csum6', 'noencap-csum6', 'encap-remcsum', 'noencap-remcsum']
+
+    ip6tnl_opts = [:remote, :local, :dev, :encaplimit, :hoplimit, :tclass, :flowlabel, :dscp, :fwmark, :encap, 'encap-sport', 'encap-dport']
+    ip6tnl_flags = [:mip6, 'encap-csum', 'noencap-csum', 'encap-csum6', 'noencap-csum6', 'encap-remcsum', 'noencap-remcsum']
 
     desc = {}
 
@@ -269,6 +283,39 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
         desc['link-kind'] = link_kind
         link_kind_opts = tun_opts
+      when :ipip, :sit
+        iptun_flags.each do |f|
+          s = f.to_s
+          i = options.index(s)
+          if i
+            desc[link_kind][s] = 'on'
+            options.delete_at(i)
+          end
+        end
+
+        desc['link-kind'] = link_kind
+        link_kind_opts = iptun_opts
+      when :ip6tnl
+        if ['ipip6', 'ip6ip6', 'any'].include?(options[0].to_s)
+          desc[link_kind]['ipproto'], *options = options
+        end
+
+        i = options.index('(flowinfo')
+        if i
+          desc[link_kind]['flowinfo'] = options[i + 1].delete(')')
+        end
+
+        ip6tnl_flags.each do |f|
+          s = f.to_s
+          i = options.index(s)
+          if i
+            desc[link_kind][s] = 'on'
+            options.delete_at(i)
+          end
+        end
+
+        desc['link-kind'] = link_kind
+        link_kind_opts = ip6tnl_opts
       end
 
       options = Hash[options.each_slice(2).to_a]
@@ -388,6 +435,8 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.linkinfo_show(name)
+    return {} if name.nil? || name.empty?
+
     cmdout = link_show(name)
     return {} if cmdout.nil?
 
@@ -395,10 +444,17 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.addrinfo_show(name)
+    return {} if name.nil? || name.empty?
+
     cmdout = addr_show(name)
     return {} if cmdout.nil?
 
     addrinfo_parse(cmdout)
+  end
+
+  def self.addr_lookup(addr)
+    addrinfo = addrinfo_parse(addr_list).each { |info| info['local'] == addr }
+    addrinfo[0] || {}
   end
 
   def self.get_hwaddr(name)
@@ -430,6 +486,10 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       if ifcfg.empty? && addr
         ifcfg = get_config_by_hwaddr(addr) unless addr.empty?
       end
+
+      # no need to lookup it again using same name
+      return ifcfg if name == conn_name
+
       # try to find config file by DEVICE
       if ifcfg.nil? || ifcfg.empty?
         ifcfg = get_config_by_device(name)
@@ -526,6 +586,26 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       desc = parse_config(config)
       return config if desc['device'] == device
     end
+    ''
+  end
+
+  def self.get_device_by_hwaddr(addr)
+    return '' if addr.nil? || addr.empty?
+
+    cmdout = link_list
+    return '' unless cmdout
+
+    link = []
+    cmdout.each_line do |line|
+      link << linkinfo_parse(line)
+    end
+
+    linkinfo = {}
+    link.each do |info|
+      linkinfo = info if info['link-addr'] && info['link-addr'].casecmp(addr)
+    end
+
+    return linkinfo['ifname'] if linkinfo && linkinfo['ifname']
     ''
   end
 
