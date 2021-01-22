@@ -40,4 +40,9 @@ define networksetup::loopback::ipv4 (
     prefix        => $addrprefix,
     require       => Class['networksetup::loopback'],
   }
+
+  network_addr { $addrinfo[0]:
+    device => 'lo',
+    label  => $name,
+  }
 }

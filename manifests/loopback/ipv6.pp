@@ -38,4 +38,9 @@ define networksetup::loopback::ipv6 (
     ipv6addr_secondaries => $addr_secondaries,
     require              => Class['networksetup::loopback'],
   }
+
+  network_addr { $addrinfo[0]:
+    device => 'lo',
+    label  => $name,
+  }
 }
