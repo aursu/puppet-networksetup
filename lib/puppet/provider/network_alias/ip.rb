@@ -17,7 +17,7 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def ifcfg_data
-    @data ||= self.class.parse_config(config_path)
+    @addrinfo ||= self.class.parse_config(config_path)
   end
 
   mk_resource_methods
@@ -75,6 +75,18 @@ EOF
 
     ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
     self.class.system_caller('ifup', config_path)
+  end
+
+  def destroy
+    return unless File.exist?(config_path)
+
+    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
+    self.class.system_caller('ifdown', config_path)
+  end
+
+  def exists?
+    # device from ifcfg script should be equal to device from resource declaration
+    device == @resource[:device]
   end
 
   def flush
