@@ -3,6 +3,8 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', 'networksetup')
 Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::NetworkSetup) do
   desc 'Manage network interfaces.'
 
+  confine osfamily: :redhat
+
   commands ip: 'ip'
   commands brctl: 'brctl'
 
