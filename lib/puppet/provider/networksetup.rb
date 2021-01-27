@@ -501,7 +501,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   def self.validate_ip(ip)
     return nil unless ip
     IPAddr.new(ip)
-  rescue ArgumentError
+  rescue IPAddr::InvalidAddressError
     nil
   end
 
@@ -510,12 +510,43 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     %r{^([a-f0-9]{2}[:-]){5}[a-f0-9]{2}$} =~ mac.downcase
   end
 
+  def self.validate_netmask(netmask)
+    mask = IPAddr.new(netmask).to_i
+
+    # 0.0.0.0
+    return false if mask == 0
+
+    while (mask + 1) & mask == mask
+      mask >>= 1
+    end
+
+    return false if mask.to_s(2).count('0') >= 1
+    mask
+  rescue IPAddr::InvalidAddressError
+    nil
+  end
+
+  def self.netmask_prefix(netmask)
+    mask = validate_netmask(netmask)
+    return nil unless mask
+
+    mask.to_s(2).size
+  end
+
   def validate_ip(ip)
     self.class.validate_ip(ip)
   end
 
   def validate_mac(mac)
     self.class.validate_mac(mac)
+  end
+
+  def validate_netmask(netmask)
+    self.class.validate_netmask(netmask)
+  end
+
+  def netmask_prefix(netmask)
+    self.class.netmask_prefix(netmask)
   end
 
   def self.parse_config(ifcfg)

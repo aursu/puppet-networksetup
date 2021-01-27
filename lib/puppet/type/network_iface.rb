@@ -111,6 +111,7 @@ Puppet::Type.newtype(:network_iface) do
 
     validate do |val|
       raise Puppet::ParseError, _('ipv6addr must be a valid IP address') unless provider.validate_ip(val)
+      raise Puppet::Error, _('ipv6addr must be an IPv6 address') unless IPAddr.new(val).ipv6?
     end
   end
 
@@ -126,7 +127,7 @@ Puppet::Type.newtype(:network_iface) do
     desc 'Device network mask from network script (NETMASK)'
 
     validate do |val|
-      raise Puppet::ParseError, _('network_iface :netmask must be a valid IP address') unless provider.validate_ip(val)
+      raise Puppet::ParseError, _('netmask must be a valid IP address netmask') unless provider.validate_netmask(val)
     end
   end
 
@@ -174,18 +175,19 @@ Puppet::Type.newtype(:network_iface) do
     if self[:ipaddr]
       fullmask = '255.255.255.255'
       maxprefix = 32
-      anyaddr = '0.0.0.0'
+      # anyaddr = '0.0.0.0'
       _addr, prefix = self[:ipaddr].split('/', 2)
     elsif self[:ipv6addr] && self[:ipv6init] == 'yes'
       fullmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'
       maxprefix = 128
-      anyaddr = '::'
+      # anyaddr = '::'
       _addr, prefix = self[:ipv6addr].split('/', 2)
     end
 
     if self[:ipaddr] || (self[:ipv6init] && self[:ipv6init] == 'yes')
       if self[:netmask]
-        self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
+        # self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
+        self[:prefix] = provider.netmask_prefix(self[:netmask])
       elsif self[:prefix] || prefix
         self[:prefix] = prefix unless self[:prefix]
         self[:netmask] = IPAddr.new(fullmask).mask(self[:prefix].to_i).to_s
