@@ -43,3 +43,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.2.2
+
+**Features**
+
+**Bugfixes**
+
+* Added fix for parent_device field
+
+**Known Issues**
