@@ -453,7 +453,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.addr_lookup(addr)
-    addrinfo = addrinfo_parse(addr_list).each { |info| info['local'] == addr }
+    addrinfo = addrinfo_parse(addr_list).select { |info| info['local'] == addr }
     addrinfo[0] || {}
   end
 

@@ -27,6 +27,10 @@ Puppet::Type.type(:network_addr).provide(:ip, parent: Puppet::Provider::NetworkS
     ifcfg_data['ifname']
   end
 
+  def label
+    ifcfg_data['ifa_label']
+  end
+
   def linkinfo_show
     @linkinfo ||= self.class.linkinfo_show(device)
   end

@@ -15,6 +15,7 @@ class networksetup::loopback (
   }
 
   network_iface { 'lo':
+    conn_type            => 'Ethernet',
     ipaddr               => '127.0.0.1',
     netmask              => '255.0.0.0',
     network              => '127.0.0.0',
