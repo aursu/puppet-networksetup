@@ -126,6 +126,7 @@ EOF
     f.write(ifcfg_content)
     f.close
 
+    # run ifup command only if TYPE is set in ifcfg configuration script
     return unless ifcfg_type
 
     self.class.system_caller('ifup', config_path_new)
@@ -186,6 +187,7 @@ EOF
     f.write(ifcfg_content)
     f.close
 
+    # run ifup command only if TYPE is set in ifcfg configuration script
     return unless ifcfg_type
 
     self.class.system_caller('ifup', config_path_new)

@@ -9,7 +9,7 @@ describe provider_class do
     allow(described_class).to receive(:which).with('ip').and_return('/sbin/ip')
   end
 
-  describe 'check path to config' do
+  describe 'check address setup' do
     let(:resource_name) { '172.17.0.2' }
     let(:resource) do
       Puppet::Type.type(:network_addr).new(
@@ -44,6 +44,45 @@ EOL
 8: eth0    inet6 fe80::42:acff:fe11:3/64 scope link \       valid_lft forever preferred_lft forever
 EOL
 
+      expect(provider.ifcfg_data).to eq({})
+
+      expect(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip addr add 172.17.0.2 brd \+ dev lo scope host')
+
+      provider.create
+    }
+  end
+
+  describe 'check address ignore' do
+    let(:resource_name) { '127.0.0.1' }
+    let(:resource) do
+      Puppet::Type.type(:network_addr).new(
+        title: resource_name,
+        ensure: :present,
+        device: 'lo',
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it {
+      allow(Puppet::Util::Execution).to receive(:execute).and_call_original
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show')
+        .and_return(<<'EOL')
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
+EOL
+
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o addr show')
+        .and_return(<<'EOL')
+1: lo    inet 127.0.0.1/8 scope host lo\       valid_lft forever preferred_lft forever
+1: lo    inet 192.168.178.1/27 brd 192.168.178.31 scope global lo:alias6\       valid_lft forever preferred_lft forever
+1: lo    inet6 ::1/128 scope host \       valid_lft forever preferred_lft forever
+EOL
+
       expect(provider.ifcfg_data).to eq(
         'ifa_family' => 'inet',
         'ifa_index' => '1',
@@ -55,9 +94,6 @@ EOL
         'scope' => 'host',
         'valid_lft' => 'forever',
       )
-
-      expect(Puppet::Util::Execution).to receive(:execute)
-        .with('/sbin/ip addr add 172.17.0.2 brd \+ dev lo scope host')
 
       provider.create
     }
