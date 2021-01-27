@@ -23,3 +23,13 @@ All notable changes to this project will be documented in this file.
 * Added compatibility to Ruby < 2.5
 
 **Known Issues**
+
+## Release 1.2.0
+
+**Features**
+
+* Added installation of required tools
+
+**Bugfixes**
+
+**Known Issues**
