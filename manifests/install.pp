@@ -4,19 +4,32 @@
 #
 # @example
 #   include networksetup::install
-class networksetup::install
+class networksetup::install (
+  Boolean $manage_initscripts  = true,
+  Boolean $manage_bridge_utils = true,
+  Boolean $manage_iproute      = true,
+)
 {
   if $facts['os']['family'] == 'RedHat' {
     case $facts['os']['release']['major'] {
       '7': {
-        package { 'initscripts': }
-        package { 'bridge-utils': }
+        if $manage_initscripts {
+          package { 'initscripts': }
+        }
+
+        if $manage_bridge_utils {
+          package { 'bridge-utils': }
+        }
       }
       '8': {
-        package { 'network-scripts': }
+        if $manage_initscripts {
+          package { 'network-scripts': }
+        }
       }
       default: {}
     }
-    package { 'iproute': }
+    if $manage_iproute {
+      package { 'iproute': }
+    }
   }
 }

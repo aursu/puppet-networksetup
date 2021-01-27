@@ -33,3 +33,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.2.1
+
+**Features**
+
+* Added flags to make software management optional
+
+**Bugfixes**
+
+**Known Issues**
