@@ -514,11 +514,9 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     mask = IPAddr.new(netmask).to_i
 
     # 0.0.0.0
-    return false if mask == 0
+    return false if mask.zero?
 
-    while (mask + 1) & mask == mask
-      mask >>= 1
-    end
+    mask >>= 1 while (mask + 1) & mask == mask
 
     return false if mask.to_s(2).count('0') >= 1
     mask
