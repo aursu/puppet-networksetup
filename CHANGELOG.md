@@ -53,3 +53,14 @@ All notable changes to this project will be documented in this file.
 * Added fix for parent_device field
 
 **Known Issues**
+
+## Release 1.2.3
+
+**Features**
+
+**Bugfixes**
+
+* Fix for missed label provider method for network_addr
+* Fix for empty addr_lookup output
+
+**Known Issues**
