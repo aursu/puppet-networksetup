@@ -128,7 +128,6 @@ EOF
 
     return unless ifcfg_type
 
-    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
     self.class.system_caller('ifup', config_path_new)
   end
 
@@ -189,7 +188,6 @@ EOF
 
     return unless ifcfg_type
 
-    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
     self.class.system_caller('ifup', config_path_new)
   end
 end

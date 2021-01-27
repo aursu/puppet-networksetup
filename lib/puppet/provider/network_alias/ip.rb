@@ -28,6 +28,10 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
   end
 
+  def parent_device
+    device.split(':').first if device
+  end
+
   def ifcfg_content
     ifcfg_device = @resource[:device] || device
     ifcfg_ipaddr = @resource[:ipaddr] || ipaddr
@@ -75,14 +79,12 @@ EOF
 
     return unless ifcfg_type
 
-    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
     self.class.system_caller('ifup', config_path)
   end
 
   def destroy
     return unless File.exist?(config_path)
 
-    ENV['PATH'] = ['/etc/sysconfig/network-scripts', ENV['PATH']].join(':')
     self.class.system_caller('ifdown', config_path)
   end
 

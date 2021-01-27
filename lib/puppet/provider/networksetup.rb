@@ -653,6 +653,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
      :netmask,
      :network,
      :onboot,
+     :parent_device,
      :prefix].each do |attr|
       define_method(attr) do
         ifcfg_data[attr.to_s]
