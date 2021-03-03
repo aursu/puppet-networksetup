@@ -1,4 +1,10 @@
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', '..'))
+require 'puppet_x/networksetup/customcomm'
+require 'puppet_x/networksetup/customprop'
+
 Puppet::Type.newtype(:network_alias) do
+  extend CustomComm
+
   @doc = <<-PUPPET
     @summary
       Network alias configuration
@@ -35,14 +41,12 @@ Puppet::Type.newtype(:network_alias) do
     end
   end
 
-  newproperty(:conn_type) do
-    desc 'Device type from network script (TYPE)'
+  newproperty(:device) do
+    desc 'Device ID from network script (DEVICE)'
 
-    newvalues('Ethernet', 'CIPE', 'IPSEC', 'Modem', 'xDSL', 'ISDN',
-              'Wireless', 'Token Ring', 'CTC', 'GRE', 'IPIP', 'IPIP6', 'SIT',
-              'sit', 'InfiniBand', 'infiniband', 'Bridge', 'Tap',
-              # https://github.com/openvswitch/ovs/blob/master/rhel/README.RHEL.rst
-              %r{^OVS[A-Za-z]*$})
+    validate do |val|
+      raise Puppet::Error, _("Invalid device name \"#{val}\"") unless val =~ %r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$}
+    end
   end
 
   newproperty(:parent_device) do
@@ -50,75 +54,6 @@ Puppet::Type.newtype(:network_alias) do
 
     validate do |val|
       raise Puppet::Error, _("error: invalid parent device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
-    end
-  end
-
-  newproperty(:device) do
-    desc 'Device ID from network script (DEVICE)'
-
-    validate do |val|
-      raise Puppet::Error, _("error: invalid device name (#{val})") unless val =~ %r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$}
-    end
-  end
-
-  newproperty(:ipv6init) do
-    desc 'ipv6init flag from device network script (IPV6INIT)'
-
-    newvalues('yes', 'no', true, false, :yes, :no, :true, :false)
-
-    munge do |val|
-      case val
-      when true, :true
-        'yes'
-      when false, :false
-        'no'
-      else
-        val
-      end
-    end
-  end
-
-  newproperty(:ipaddr) do
-    desc 'Alias IP address from network script (IPADDR)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('ipaddr must be a valid IP address') unless provider.validate_ip(val)
-    end
-  end
-
-  newproperty(:ipv6addr) do
-    desc 'Alias IPv6 address from network script (IPV6ADDR)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('ipv6addr must be a valid IP address') unless provider.validate_ip(val)
-    end
-  end
-
-  newproperty(:ipv6addr_secondaries, array_matching: :all) do
-    desc 'Alias IPv6 address from network script (IPV6ADDR)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('ipv6addr_secondaries must be an array of valid IP addresses') unless provider.validate_ip(val)
-    end
-  end
-
-  newproperty(:netmask) do
-    desc 'Alias network mask from network script (NETMASK)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('netmask must be a valid IP address netmask') unless provider.validate_netmask(val)
-    end
-  end
-
-  newproperty(:prefix) do
-    desc 'Alias prefix  network script (NETMASK)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('prefix must be an integer between 8 and 32') unless Integer(val) >= 1 && Integer(val) <= 128
-    end
-
-    munge do |val|
-      Integer(val)
     end
   end
 
@@ -137,7 +72,7 @@ Puppet::Type.newtype(:network_alias) do
       maxprefix = 32
       # anyaddr = '0.0.0.0'
       _addr, prefix = self[:ipaddr].split('/', 2)
-    elsif self[:ipv6init] == 'yes' && self[:ipv6addr]
+    elsif self[:ipv6addr] && self[:ipv6init] == 'yes'
       fullmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'
       maxprefix = 128
       # anyaddr = '::'

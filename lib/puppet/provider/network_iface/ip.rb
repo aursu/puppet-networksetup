@@ -11,6 +11,13 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
   def initialize(value = {})
     super(value)
     @property_flush = {}
+    @config = nil
+    @addrinfo = nil
+    @ifname = nil
+    @linkinfo_iface = nil
+    @linkinfo_device = nil
+    @linkinfo_name = nil
+    @linkinfo = nil
   end
 
   def config_path
@@ -32,7 +39,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     sfx = device || name
 
     # try to use existing configuration first
-    return config_path unless config_path.nil? || config_path.empty?
+    return config_path if config_path
     "/etc/sysconfig/network-scripts/ifcfg-#{sfx}"
   end
 
@@ -42,13 +49,38 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
   mk_resource_methods
 
-  def linkinfo_show
-    name = @resource[:name]
-    @linkinfo ||= self.class.linkinfo_show(name)
+  def interface_name
+    addr = @resource[:hwaddr]
+    @ifname ||= self.class.get_device_by_hwaddr(addr)
   end
 
-  def addrinfo_show
+  def linkinfo_iface
+    @linkinfo_iface ||= self.class.linkinfo_show(interface_name)
+  end
+
+  def linkinfo_device
+    device = @resource[:device]
+    @linkinfo_device ||= self.class.linkinfo_show(device)
+  end
+
+  def linkinfo_name
     name = @resource[:name]
+    @linkinfo_name ||= self.class.linkinfo_show(name)
+  end
+
+  def linkinfo_show
+    @linkinfo ||= linkinfo_iface unless linkinfo_iface.empty?
+    return @linkinfo if @linkinfo
+
+    @linkinfo ||= linkinfo_device unless linkinfo_device.empty?
+    return @linkinfo if @linkinfo
+
+    @linkinfo ||= linkinfo_name
+  end
+
+  # return Array of Hashes with interface addresses' infor or empty array
+  def addrinfo_show
+    name = linkinfo_name['ifname']
     @addr ||= self.class.addrinfo_show(name)
   end
 
@@ -69,16 +101,39 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_ipv6init  = @resource[:ipv6init]  || ipv6init
     ifcfg_prefix    = @resource[:prefix]    || prefix
     ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
+    ifcfg_bootproto = @resource[:bootproto] || bootproto
+    ifcfg_defroute  = @resource[:defroute]  || defroute
+    ifcfg_gateway   = @resource[:gateway]   || gateway
+    ifcfg_dns       = @resource[:dns]       || dns
+    ifcfg_dns       = [ifcfg_dns].flatten if ifcfg_dns
 
     ERB.new(<<-EOF, nil, '<>').result(binding)
-<% if ifcfg_device %>
-DEVICE=<%= ifcfg_device %>
-<% end %>
 <% if ifcfg_type %>
 TYPE=<%= ifcfg_type %>
 <% end %>
+<% if ifcfg_bootproto %>
+BOOTPROTO=<%= ifcfg_bootproto %>
+<% end %>
+<% if ifcfg_defroute %>
+DEFROUTE=<%= ifcfg_defroute %>
+<% end %>
+<% if ifcfg_ipv6init %>
+IPV6INIT=<%= ifcfg_ipv6init %>
+<% end %>
+<% if ifcfg_name %>
+NAME=<%= ifcfg_name %>
+<% end %>
+<% if ifcfg_device %>
+DEVICE=<%= ifcfg_device %>
+<% end %>
+<% if ifcfg_onboot %>
+ONBOOT=<%= ifcfg_onboot %>
+<% end %>
 <% if ifcfg_ipaddr %>
 IPADDR=<%= ifcfg_ipaddr %>
+<% end %>
+<% if ifcfg_prefix %>
+PREFIX=<%= ifcfg_prefix %>
 <% end %>
 <% if ifcfg_netmask %>
 NETMASK=<%= ifcfg_netmask %>
@@ -86,26 +141,22 @@ NETMASK=<%= ifcfg_netmask %>
 <% if ifcfg_network %>
 NETWORK=<%= ifcfg_network %>
 <% end %>
+<% if ifcfg_gateway %>
+GATEWAY=<%= ifcfg_gateway %>
+<% end %>
 <% if ifcfg_broadcast %>
 BROADCAST=<%= ifcfg_broadcast %>
-<% end %>
-<% if ifcfg_onboot %>
-ONBOOT=<%= ifcfg_onboot %>
-<% end %>
-<% if ifcfg_name %>
-NAME=<%= ifcfg_name %>
-<% end %>
-<% if ifcfg_prefix %>
-PREFIX=<%= ifcfg_prefix %>
 <% end %>
 <% if ifcfg_ipv6addr %>
 IPV6ADDR=<%= ifcfg_ipv6addr %>
 <% end %>
-<% if ifcfg_ipv6init %>
-IPV6INIT=<%= ifcfg_ipv6init %>
-<% end %>
 <% if ifcfg_ipv6addr_secondaries %>
 IPV6ADDR_SECONDARIES="<%= [ifcfg_ipv6addr_secondaries].flatten.join(' ') %>"
+<% end %>
+<% if ifcfg_dns %>
+<% for i in 1..ifcfg_dns.size do %>
+DNS<%= i %>=<%= ifcfg_dns[i - 1] %>
+<% end %>
 <% end %>
 EOF
   end
@@ -174,9 +225,9 @@ EOF
   end
 
   def exists?
-    name = @resource[:name]
     # no ifname - no  device
-    linkinfo_show['ifname'] == name
+    # we want to have both device and its ifcfg scrip
+    linkinfo_show['ifname'].is_a?(String) && config_path
   end
 
   def flush

@@ -18,10 +18,10 @@ Puppet::Type.newtype(:network_addr) do
   end
 
   newproperty(:device) do
-    desc 'Device ID to setup '
+    desc 'Interface name of the device (DEVICE)'
 
     validate do |val|
-      raise Puppet::Error, _("error: invalid device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
+      raise Puppet::Error, _("Invalid device name \"#{val}\"") unless val =~ %r{^[-0-9A-Za-z_]*$}
     end
   end
 
@@ -29,7 +29,7 @@ Puppet::Type.newtype(:network_addr) do
     desc 'Device hardware address from network script (HWADDR)'
 
     validate do |val|
-      raise Puppet::ParseError, _('network_iface :hwaddr must be a valid MAC address') unless provider.validate_mac(val)
+      raise Puppet::ParseError, _("\"#{val}\" must be a valid MAC address") unless provider.validate_mac(val)
     end
 
     munge do |val|
@@ -43,7 +43,7 @@ Puppet::Type.newtype(:network_addr) do
     validate do |val|
       return true if val =~ %r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$}
       return true if val =~ %r{^[0-9A-Za-z_]+$}
-      raise Puppet::Error, _("error: invalid alias name (#{val})")
+      raise Puppet::Error, _("Invalid alias name \"#{val}\"")
     end
   end
 

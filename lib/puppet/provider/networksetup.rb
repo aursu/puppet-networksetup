@@ -77,11 +77,13 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     ip_caller('-details', '-o', 'addr', 'show', *args)
   end
 
+  # All addresses in the system
   def self.addr_list
     ip_caller('-details', '-o', 'addr', 'show')
   end
 
   # parse ip -details -o link show command output
+  # return Hash with interface link data or empty Hash
   def self.linkinfo_parse(cmdout)
     return {} if cmdout.nil? || cmdout.empty?
 
@@ -208,16 +210,16 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       link_kind = link_kind.to_sym
       desc[link_kind] = {}
 
+      link_kind_opts = []
       case link_kind
       when :veth, :ppp
         desc['link-kind'] = link_kind
-        link_kind_opts = []
       when :bridge
         desc['link-kind'] = link_kind
         link_kind_opts = bridge_opts
       when :bridge_slave
-        desc['slave-kind'] = slave_kind
-        slave_kind_opts = bridge_slave_opts
+        desc['slave-kind'] = link_kind
+        link_kind_opts = bridge_slave_opts
       when :vxlan
         # srcport MIN MAX
         i = options.index('srcport')
@@ -342,6 +344,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       slave_kind = slave_kind.to_sym
       desc[slave_kind] = {}
 
+      slave_kind_opts = []
       case slave_kind
       when :bridge_slave
         desc['slave-kind'] = slave_kind
@@ -367,6 +370,9 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   # 632: tun0    inet 10.11.88.1/32 scope global tun0\       valid_lft forever preferred_lft forever
+  #
+  # return Array of Hashes with addresses from `ip addr` command output in
+  # parameter or empty array
   def self.addrinfo_parse(cmdout)
     return [] if cmdout.nil? || cmdout.empty?
 
@@ -434,6 +440,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     addr
   end
 
+  # return Hash with interface link data or empty Hash
   def self.linkinfo_show(name)
     return {} if name.nil? || name.empty?
 
@@ -443,37 +450,41 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     linkinfo_parse(cmdout)
   end
 
+  # return Array of Hashes with addresses for specified interface (via
+  # parameter `name`) or mpty array
   def self.addrinfo_show(name)
-    return {} if name.nil? || name.empty?
+    return [] if name.nil? || name.empty?
 
     cmdout = addr_show(name)
-    return {} if cmdout.nil?
+    return [] if cmdout.nil?
 
     addrinfo_parse(cmdout)
   end
 
+  # return address infor for address in parameter or empty hash
   def self.addr_lookup(addr)
     addrinfo = addrinfo_parse(addr_list).select { |info| info['local'] == addr }
     addrinfo[0] || {}
   end
 
+  # return String (hardware address) or nil
   def self.get_hwaddr(name)
     syspath = "/sys/class/net/#{name}"
     if File.exist?("#{syspath}/address")
       File.read("#{syspath}/address").upcase
     elsif File.exist?(syspath)
       desc = linkinfo_show(name)
-      desc['link-addr'].upcase
+      desc['link-addr'].upcase if desc['link-addr']
+    else
+      nil
     end
-    ''
   end
 
+  # return either String (path to configuration file) or nil
   def self.config(name, conn_name = nil)
     # NAME inside ifcfg file could be different than name for device
     conn_name = name if conn_name.nil?
-    if File.exist?(name)
-      name
-    elsif File.exist?("/etc/sysconfig/network-scripts/#{name}")
+    if File.exist?("/etc/sysconfig/network-scripts/#{name}")
       "/etc/sysconfig/network-scripts/#{name}"
     elsif File.exist?("/etc/sysconfig/network-scripts/ifcfg-#{name}")
       "/etc/sysconfig/network-scripts/ifcfg-#{name}"
@@ -482,16 +493,16 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       ifcfg = get_config_by_name(conn_name)
 
       # try to find config file by HWADDR
-      addr = get_hwaddr(name)
-      if ifcfg.empty? && addr
-        ifcfg = get_config_by_hwaddr(addr) unless addr.empty?
+      unless ifcfg
+        addr = get_hwaddr(name)
+        ifcfg = get_config_by_hwaddr(addr) if addr
       end
 
       # no need to lookup it again using same name
       return ifcfg if name == conn_name
 
       # try to find config file by DEVICE
-      if ifcfg.nil? || ifcfg.empty?
+      unless ifcfg
         ifcfg = get_config_by_device(name)
       end
       ifcfg
@@ -547,6 +558,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     self.class.netmask_prefix(netmask)
   end
 
+  # return Hash of innterface script parameters with empty hash if no any info
   def self.parse_config(ifcfg)
     desc = {}
 
@@ -555,6 +567,10 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       'BOOTPROTO' => 'bootproto',
       'BROADCAST' => 'broadcast',
       'DEVICE'    => 'device',
+      'DEFROUTE'  => 'defroute',
+      'DNS1'      => 'dns',
+      'DNS2'      => 'dns',
+      'GATEWAY'   => 'gateway',
       'HWADDR'    => 'hwaddr',
       'IPADDR'    => 'ipaddr',
       'IPV6ADDR'  => 'ipv6addr',
@@ -580,49 +596,63 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
       next unless k
 
-      desc[k] = v.strip
-                 .sub(%r{^['"]}, '')
-                 .sub(%r{['"]$}, '')
+      s = v.strip
+           .sub(%r{^['"]}, '')
+           .sub(%r{['"]$}, '')
+
+      if k == 'dns'
+        desc[k] ||= []
+        desc[k] << s
+      else
+        desc[k] = s
+      end
     end
 
     desc
   end
 
+  # return Array of paths or empty array if there are no compatible paths
   def self.config_all
     Dir.glob('/etc/sysconfig/network-scripts/ifcfg-*').reject do |config|
       config =~ %r{(~|\.(bak|old|orig|rpmnew|rpmorig|rpmsave))$}
     end
   end
 
+  # return either String (path to configuration file) or nil
   def self.get_config_by_name(name)
     config_all.each do |config|
       desc = parse_config(config)
       return config if desc['conn_name'].casecmp(name)
     end
-    ''
+    nil
   end
 
+  # return either String (path to configuration file) or nil
   def self.get_config_by_hwaddr(addr)
     config_all.each do |config|
       desc = parse_config(config)
       return config if desc['hwaddr'].casecmp(addr)
     end
-    ''
+    nil
   end
 
+  # return either String (path to configuration file) or nil
   def self.get_config_by_device(device)
     config_all.each do |config|
       desc = parse_config(config)
       return config if desc['device'] == device
     end
-    ''
+    nil
   end
 
+  # return String with device name or nil
   def self.get_device_by_hwaddr(addr)
-    return '' if addr.nil? || addr.empty?
+    ifname = nil
+
+    return ifname if addr.nil? || addr.empty?
 
     cmdout = link_list
-    return '' unless cmdout
+    return ifname unless cmdout
 
     link = []
     cmdout.each_line do |line|
@@ -631,11 +661,11 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
     linkinfo = {}
     link.each do |info|
-      linkinfo = info if info['link-addr'] && info['link-addr'].casecmp(addr)
+      linkinfo = info if info['link-addr'] && info['link-addr'].casecmp?(addr)
     end
 
-    return linkinfo['ifname'] if linkinfo && linkinfo['ifname']
-    ''
+    ifname = linkinfo['ifname'] if linkinfo && linkinfo['ifname']
+    ifname
   end
 
   def self.mk_resource_methods
@@ -644,7 +674,10 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
      :broadcast,
      :conn_name,
      :conn_type,
+     :defroute,
      :device,
+     :dns,
+     :gateway,
      :hwaddr,
      :ipaddr,
      :ipv6addr,

@@ -1,4 +1,10 @@
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', '..'))
+require 'puppet_x/networksetup/customcomm'
+require 'puppet_x/networksetup/customprop'
+
 Puppet::Type.newtype(:network_iface) do
+  extend CustomComm
+
   @doc = <<-PUPPET
     @summary
       Network device configuration
@@ -10,15 +16,25 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   newparam(:name, namevar: true) do
-    desc 'Interface name. In use to lookup ifcgf script inside /etc/sysconfig/network-scripts'
+    desc 'Interface name. To lookup ifcgf script inside /etc/sysconfig/network-scripts'
 
     validate do |val|
       raise Puppet::Error, _("error: invalid interface name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
     end
   end
 
+  newproperty(:device) do
+    desc 'Interface name of the device (DEVICE)'
+
+    defaultto { @resource[:name] }
+
+    validate do |val|
+      raise Puppet::Error, _("error: invalid device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
+    end
+  end
+
   newproperty(:conn_name) do
-    desc 'Device name from network script (NAME)'
+    desc 'User friendly name for the connection (NAME)'
   end
 
   newproperty(:link_kind) do
@@ -36,44 +52,20 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   newproperty(:bootproto) do
-    desc 'Boot proto flag from device network script (BOOTPROTO)'
+    desc 'Method used for IPv4 protocol configuration (BOOTPROTO)'
 
     newvalues('bootp', 'dhcp', 'static', 'none')
   end
 
-  newproperty(:broadcast) do
-    desc 'Device broadcast address from network script (BROADCAST)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('network_iface :broadcast must be a valid IP address') unless provider.validate_ip(val)
-    end
-  end
-
-  newproperty(:conn_type) do
-    desc 'Device type from network script (TYPE)'
-
-    newvalues('Ethernet', 'CIPE', 'IPSEC', 'Modem', 'xDSL', 'ISDN',
-              'Wireless', 'Token Ring', 'CTC', 'GRE', 'IPIP', 'IPIP6', 'SIT',
-              'sit', 'InfiniBand', 'infiniband', 'Bridge', 'Tap',
-              # https://github.com/openvswitch/ovs/blob/master/rhel/README.RHEL.rst
-              %r{^OVS[A-Za-z]*$})
-  end
-
-  newproperty(:device) do
-    desc 'Device ID from network script (DEVICE)'
-
-    defaultto { @resource[:name] }
-
-    validate do |val|
-      raise Puppet::Error, _("error: invalid device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
-    end
+  newproperty(:broadcast, parent: PuppetX::NetworkSetup::IPProperty) do
+    desc 'Device broadcast address (BROADCAST)'
   end
 
   newproperty(:hwaddr) do
-    desc 'Device hardware address from network script (HWADDR)'
+    desc 'Hardware address of the device in traditional hex-digits-and-colons notation (HWADDR)'
 
     validate do |val|
-      raise Puppet::ParseError, _('network_iface :hwaddr must be a valid MAC address') unless provider.validate_mac(val)
+      raise Puppet::ParseError, _('hwaddr must be a valid MAC address') unless provider.validate_mac(val)
     end
 
     munge do |val|
@@ -81,93 +73,22 @@ Puppet::Type.newtype(:network_iface) do
     end
   end
 
-  newproperty(:ipaddr) do
-    desc 'Device IP address from network script (IPADDR)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('network_iface :ipaddr must be a valid IP address') unless provider.validate_ip(val)
-    end
-  end
-
-  newproperty(:ipv6init) do
-    desc 'ipv6init flag from device network script (IPV6INIT)'
-
-    newvalues('yes', 'no', true, false, :yes, :no, :true, :false)
-
-    munge do |val|
-      case val
-      when true, :true
-        'yes'
-      when false, :false
-        'no'
-      else
-        val
-      end
-    end
-  end
-
-  newproperty(:ipv6addr) do
-    desc 'Alias IPv6 address from network script (IPV6ADDR)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('ipv6addr must be a valid IP address') unless provider.validate_ip(val)
-      raise Puppet::Error, _('ipv6addr must be an IPv6 address') unless IPAddr.new(val).ipv6?
-    end
-  end
-
-  newproperty(:ipv6addr_secondaries, array_matching: :all) do
-    desc 'Alias IPv6 address from network script (IPV6ADDR)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('ipv6addr_secondaries must be an array of valid IP addresses') unless provider.validate_ip(val)
-    end
-  end
-
-  newproperty(:netmask) do
-    desc 'Device network mask from network script (NETMASK)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('netmask must be a valid IP address netmask') unless provider.validate_netmask(val)
-    end
-  end
-
-  newproperty(:prefix) do
-    desc 'Alias prefix  network script (NETMASK)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('prefix must be an integer between 8 and 32') unless Integer(val) >= 1 && Integer(val) <= 128
-    end
-
-    munge do |val|
-      Integer(val)
-    end
-  end
-
-  newproperty(:network) do
+  newproperty(:network, parent: PuppetX::NetworkSetup::IPProperty) do
     desc 'Device network address from network script (NETWORK)'
-
-    validate do |val|
-      raise Puppet::ParseError, _('network_iface :network must be a valid IP address') unless provider.validate_ip(val)
-    end
   end
 
-  newproperty(:onboot) do
-    desc 'onboot flag from device network script (ONBOOT)'
+  newproperty(:onboot, parent: PuppetX::NetworkSetup::SwitchProperty) do
+    desc 'Whether the connection should be autoconnected (ONBOOT)'
 
     defaultto 'yes'
+  end
 
-    newvalues('yes', 'no', true, false, :yes, :no, :true, :false)
+  newproperty(:defroute, parent: PuppetX::NetworkSetup::SwitchProperty) do
+    desc 'Whether to assign default route to connection (DEFROUTE)'
+  end
 
-    munge do |val|
-      case val
-      when true, :true
-        'yes'
-      when false, :false
-        'no'
-      else
-        val
-      end
-    end
+  newproperty(:dns, array_matching: :all, parent: PuppetX::NetworkSetup::IPProperty) do
+    desc 'Name server address to be placed in /etc/resolv.conf (DNS{1,2})'
   end
 
   validate do
@@ -184,7 +105,7 @@ Puppet::Type.newtype(:network_iface) do
       _addr, prefix = self[:ipv6addr].split('/', 2)
     end
 
-    if self[:ipaddr] || (self[:ipv6init] && self[:ipv6init] == 'yes')
+    if self[:ipaddr] || (self[:ipv6addr] && self[:ipv6init] == 'yes')
       if self[:netmask]
         # self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
         self[:prefix] = provider.netmask_prefix(self[:netmask])
