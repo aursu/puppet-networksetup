@@ -44,9 +44,6 @@ Style/BracesAroundHashParameters:
   Description: Braces are required by Ruby 2.7. Cop removed from RuboCop v0.80.0.
     See https://github.com/rubocop-hq/rubocop/pull/7643
   Enabled: true
-Style/ClassAndModuleChildren:
-  Description: Compact style reduces the required amount of indentation.
-  EnforcedStyle: compact
 Style/EmptyElse:
   Description: Enforce against empty else clauses, but allow `nil` for clarity.
   EnforcedStyle: empty
@@ -83,6 +80,7 @@ RSpec/MessageSpies:
   EnforcedStyle: receive
 Style/Documentation:
   Exclude:
+  - lib/puppet_x/networksetup/**/*
   - lib/puppet/parser/functions/**/*
   - spec/**/*
 Style/WordArray:
@@ -130,6 +128,8 @@ RSpec/MultipleExpectations:
 RSpec/NestedGroups:
   Enabled: false
 Style/AsciiComments:
+  Enabled: false
+Style/ClassAndModuleChildren:
   Enabled: false
 Style/IfUnlessModifier:
   Enabled: false

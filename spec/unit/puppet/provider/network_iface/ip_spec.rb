@@ -84,6 +84,124 @@ describe provider_class do
     end
   end
 
+  describe 'when hardware address provided' do
+    let(:resource_name) { 'eth0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+        hwaddr: 'd4:85:64:7c:f8:28',
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it 'interface_name returns proper interface name' do
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show')
+        .and_return(<<'EOF')
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
+2: enp2s0f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether 78:e3:b5:02:a8:80 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0100000000000000000000373931364833
+3: enp2s0f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether 78:e3:b5:02:a8:84 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000373931364833
+4: ens1f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:28 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0100000000000000000000353435305448
+5: ens1f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:2c brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000353435305448
+EOF
+      expect(provider.interface_name).to eq('ens1f0')
+    end
+  end
+
+  describe 'when hardware address not provided' do
+    let(:resource_name) { 'enp2s0f0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+        device: 'ens1f1',
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it 'interface_name returns nil' do
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show')
+        .and_return(<<'EOF')
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
+2: enp2s0f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether 78:e3:b5:02:a8:80 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0100000000000000000000373931364833
+3: enp2s0f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether 78:e3:b5:02:a8:84 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000373931364833
+4: ens1f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:28 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0100000000000000000000353435305448
+5: ens1f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:2c brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000353435305448
+EOF
+
+      expect(provider.interface_name).to eq(nil)
+    end
+
+    it 'linkinfo_show returns info for interface behind device' do
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show ens1f1')
+        .and_return('5: ens1f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:2c brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000353435305448') # rubocop:disable Metrics/LineLength
+
+      expect(provider.linkinfo_show).to eq(
+        'addrgenmode' => 'none',
+        'brd' => 'ff:ff:ff:ff:ff:ff',
+        'group' => 'default',
+        'gso_max_segs' => '65535',
+        'gso_max_size' => '65513',
+        'ifi_index' => '5',
+        'iflink' => nil,
+        'ifname' => 'ens1f1',
+        'link-addr' => 'd4:85:64:7c:f8:2c',
+        'link-flags' => ['BROADCAST', 'MULTICAST', 'UP', 'LOWER_UP'],
+        'link-type' => 'link/ether',
+        'mode' => 'DEFAULT',
+        'mtu' => '1500',
+        'numrxqueues' => '32',
+        'numtxqueues' => '32',
+        'portid' => '0200000000000000000000353435305448',
+        'promiscuity' => '0',
+        'qdisc' => 'mq',
+        'qlen' => '1000',
+        'state' => 'UP',
+      )
+    end
+
+    it 'linkinfo_show returns info for interface behind name (if device not found)' do
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show ens1f1')
+        .and_return('')
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show enp2s0f0')
+        .and_return('3: enp2s0f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether 78:e3:b5:02:a8:84 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000373931364833') # rubocop:disable Metrics/LineLength
+
+      expect(provider.linkinfo_show).to eq(
+        'addrgenmode' => 'none',
+        'brd' => 'ff:ff:ff:ff:ff:ff',
+        'group' => 'default',
+        'gso_max_segs' => '65535',
+        'gso_max_size' => '65513',
+        'ifi_index' => '3',
+        'iflink' => nil,
+        'ifname' => 'enp2s0f1',
+        'link-addr' => '78:e3:b5:02:a8:84',
+        'link-flags' => ['BROADCAST', 'MULTICAST', 'UP', 'LOWER_UP'],
+        'link-type' => 'link/ether',
+        'mode' => 'DEFAULT',
+        'mtu' => '1500',
+        'numrxqueues' => '32',
+        'numtxqueues' => '32',
+        'portid' => '0200000000000000000000373931364833',
+        'promiscuity' => '0',
+        'qdisc' => 'mq',
+        'qlen' => '1000',
+        'state' => 'UP',
+      )
+    end
+  end
+
   describe 'show tun0 interface' do
     let(:resource_name) { 'tun0' }
     let(:resource) do
@@ -264,7 +382,7 @@ describe provider_class do
     }
   end
 
-  describe 'empty hash on non-existing interface' do
+  describe 'linkinfo_show is empty on non-existing interface' do
     let(:resource_name) { 'o-bhm0' }
     let(:resource) do
       Puppet::Type.type(:network_iface).new(
@@ -285,9 +403,7 @@ describe provider_class do
         .with('/sbin/ip -details -o link show o-bhm0')
         .and_return('')
 
-      expect(provider.linkinfo_show).to eq(
-        {}
-      )
+      expect(provider.linkinfo_show).to eq({})
     }
   end
 
@@ -352,13 +468,13 @@ describe provider_class do
       )
 
       expect(provider.ifcfg_content).to eq(<<EOF)
+NAME=loopback
 DEVICE=lo
+ONBOOT=yes
 IPADDR=127.0.0.1
 NETMASK=255.0.0.0
 NETWORK=127.0.0.0
 BROADCAST=127.255.255.255
-ONBOOT=yes
-NAME=loopback
 EOF
     }
 
@@ -375,13 +491,13 @@ EOF
 
       expect(ifcfg).to receive(:write)
         .with(<<EOF)
+NAME=loopback
 DEVICE=lo
+ONBOOT=yes
 IPADDR=127.0.0.1
 NETMASK=255.0.0.0
 NETWORK=127.0.0.0
 BROADCAST=127.255.255.255
-ONBOOT=yes
-NAME=loopback
 EOF
 
       provider.create
@@ -423,19 +539,98 @@ EOF
 
       expect(ifcfg).to receive(:write)
         .with(<<EOF)
-DEVICE=lo
 TYPE=Ethernet
+NAME=loopback
+DEVICE=lo
+ONBOOT=yes
 IPADDR=127.0.0.53
+PREFIX=27
 NETMASK=255.255.255.224
 NETWORK=127.0.0.32
 BROADCAST=127.255.255.255
-ONBOOT=yes
-NAME=loopback
-PREFIX=27
 EOF
 
       expect(Puppet::Util::Execution).to receive(:execute)
         .with('/etc/sysconfig/network-scripts/ifup /etc/sysconfig/network-scripts/ifcfg-lo')
+
+      provider.create
+    }
+  end
+
+  describe 'test another network settings' do
+    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-ens1f0') }
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-ens1f0', 'w', 0o600) }
+
+    let(:resource_name) { 'eth0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+        device: 'ens1f0',
+        ipaddr: '10.100.16.7',
+        prefix: 26,
+        conn_type: 'Ethernet',
+        dns: [
+          '8.8.4.4',
+          '8.8.8.8',
+        ],
+        ipv6addr_secondaries: [
+          '2a03:2880:f1ff:83:face:b00c:0:25de',
+          '2a00:1450:4001:828::2004',
+        ],
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0')
+        .and_return(true)
+      allow(File).to receive(:read)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0')
+        .and_return(ifcfg_content)
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0', 'w', 0o600).and_return(ifcfg)
+
+      expect(provider.ifcfg_data).to eq(
+        'bootproto' => 'none',
+        'conn_name' => 'ens1f0',
+        'conn_type' => 'Ethernet',
+        'defroute' => 'yes',
+        'device' => 'ens1f0',
+        'dns' => ['10.100.0.10', '10.100.0.20'],
+        'gateway' => '10.100.16.1',
+        'ipaddr' => '10.100.16.7',
+        'ipv6addr_secondaries' => '2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64 2001:ba0:2020:bce5:cdb:a034:601e:e952/64',
+        'ipv6init' => 'yes',
+        'onboot' => 'yes',
+        'prefix' => '26',
+      )
+
+      expect(ifcfg).to receive(:write)
+        .with(<<EOF)
+TYPE=Ethernet
+BOOTPROTO=none
+DEFROUTE=yes
+IPV6INIT=yes
+NAME=ens1f0
+DEVICE=ens1f0
+ONBOOT=yes
+IPADDR=10.100.16.7
+PREFIX=26
+NETMASK=255.255.255.192
+GATEWAY=10.100.16.1
+IPV6ADDR_SECONDARIES="2a03:2880:f1ff:83:face:b00c:0:25de 2a00:1450:4001:828::2004"
+DNS1=8.8.4.4
+DNS2=8.8.8.8
+EOF
+
+      expect(Puppet::Util::Execution).to receive(:execute)
+        .with('/etc/sysconfig/network-scripts/ifup /etc/sysconfig/network-scripts/ifcfg-eth0')
 
       provider.create
     }
@@ -456,6 +651,9 @@ EOF
     end
 
     it {
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show ppp0')
+        .and_return('633: ppp0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1400 qdisc fq_codel state UNKNOWN mode DEFAULT group default qlen 3\    link/ppp  promiscuity 0 minmtu 0 maxmtu 0 \    ppp addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
       allow(Puppet::Util::Execution).to receive(:execute)
         .with('/sbin/ip -details -o addr show ppp0')
         .and_return('633: ppp0    inet 192.168.53.13 peer 192.168.53.1/32 scope global ppp0\       valid_lft forever preferred_lft forever')
@@ -494,6 +692,9 @@ EOF
     end
 
     it {
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show eth0')
+        .and_return('4: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether dc:a6:32:7a:a1:ed brd ff:ff:ff:ff:ff:ff promiscuity 0 minmtu 68 maxmtu 1500 addrgenmode eui64 numtxqueues 5 numrxqueues 5 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
       allow(Puppet::Util::Execution).to receive(:execute)
         .with('/sbin/ip -details -o addr show eth0')
         .and_return(<<'EOL')
@@ -546,6 +747,9 @@ EOL
     end
 
     it {
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show eth0')
+        .and_return('2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether dc:a6:32:7a:a1:ed brd ff:ff:ff:ff:ff:ff promiscuity 0 minmtu 68 maxmtu 1500 addrgenmode eui64 numtxqueues 5 numrxqueues 5 gso_max_size 65536 gso_max_segs 65535') # rubocop:disable Metrics/LineLength
       allow(Puppet::Util::Execution).to receive(:execute)
         .with('/sbin/ip -details -o addr show eth0')
         .and_return('2: eth0    inet 192.168.178.200/24 brd 192.168.178.255 scope global dynamic eth0\       valid_lft 663759sec preferred_lft 663759sec')
