@@ -1,8 +1,7 @@
 # networksetup
 
-Welcome to your new module. A short overview of the generated parts can be found in the PDK documentation at https://puppet.com/docs/pdk/latest/pdk_generating_modules.html .
-
-The README template below provides a starting point with details about what information to include in your README.
+This module is able to contol several aspects of networking configuration for
+RedHat based OSes.
 
 #### Table of Contents
 
@@ -17,9 +16,14 @@ The README template below provides a starting point with details about what info
 
 ## Description
 
-Briefly tell users why they might want to use your module. Explain what your module does and what kind of problems users can solve with it.
+This module is able to contol several aspects of networking configuration for
+RedHat based OSes.
 
-This should be a fairly short description helps the user decide if your module is what they want.
+It is possible to match IP address to interface MAC address and setup loopback
+interface
+
+There is ability to add IP address to existing interface and setup IP address
+alias
 
 ## Setup
 
@@ -35,10 +39,6 @@ If there's more that they should know about, though, this is the place to mentio
 
 ### Setup Requirements **OPTIONAL**
 
-If your module requires anything extra before setting up (pluginsync enabled, another module, etc.), mention it here.
-
-If your most recent release breaks compatibility or requires particular steps for upgrading, you might want to include an additional "Upgrading" section here.
-
 ### Beginning with networksetup
 
 The very basic steps needed for a user to get the module up and running. This can include setup steps, if necessary, or it can be an example of the most basic use of the module.
@@ -49,39 +49,17 @@ Include usage examples for common use cases in the **Usage** section. Show your 
 
 ## Reference
 
-This section is deprecated. Instead, add reference information to your code as Puppet Strings comments, and then use Strings to generate a REFERENCE.md in your module. For details on how to add code comments and generate documentation with Strings, see the Puppet Strings [documentation](https://puppet.com/docs/puppet/latest/puppet_strings.html) and [style guide](https://puppet.com/docs/puppet/latest/puppet_strings_style.html)
-
-If you aren't ready to use Strings yet, manually create a REFERENCE.md in the root of your module directory and list out each of your module's classes, defined types, facts, functions, Puppet tasks, task plans, and resource types and providers, along with the parameters for each.
-
-For each element (class, defined type, function, and so on), list:
-
-  * The data type, if applicable.
-  * A description of what the element does.
-  * Valid values, if the data type doesn't make it obvious.
-  * Default value, if any.
-
-For example:
-
-```
-### `pet::cat`
-
-#### Parameters
-
-##### `meow`
-
-Enables vocalization in your cat. Valid options: 'string'.
-
-Default: 'medium-loud'.
-```
+See [REFERENCE.md](REFERENCE.md) for details.
 
 ## Limitations
 
-In the Limitations section, list any incompatibilities, known issues, or other warnings.
+It supports only CentOS 7+ operating systems
 
 ## Development
 
-In the Development section, tell other users the ground rules for contributing to your project and how they should submit their work.
+Please submit GitHub pull request for review.
+Rspec unit tests are required for any introduced changes
 
 ## Release Notes/Contributors/Etc. **Optional**
 
-If you aren't using changelog, put your release notes here (though you should consider using changelog). You can also add any additional sections you feel are necessary or important to include here. Please use the `## ` header.
+See [CHANGELOG.md](CHANGELOG.md) for details
