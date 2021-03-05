@@ -26,8 +26,6 @@ Puppet::Type.newtype(:network_iface) do
   newproperty(:device) do
     desc 'Interface name of the device (DEVICE)'
 
-    defaultto { @resource[:name] }
-
     validate do |val|
       raise Puppet::Error, _("error: invalid device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
     end
@@ -116,6 +114,12 @@ Puppet::Type.newtype(:network_iface) do
         self[:netmask] = fullmask
         self[:prefix] = maxprefix
       end
+    end
+
+    # set device if hwaddr provided
+    if self[:hwaddr]
+      device = provider.interface_name
+      self[:device] = device if device
     end
 
     # plugins specifics

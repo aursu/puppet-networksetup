@@ -98,6 +98,19 @@ describe provider_class do
       resource.provider = subject
     end
 
+    it 'resource device is proper interface name' do
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .with('/sbin/ip -details -o link show')
+        .and_return(<<'EOF')
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 promiscuity 0 addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
+2: enp2s0f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether 78:e3:b5:02:a8:80 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0100000000000000000000373931364833
+3: enp2s0f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether 78:e3:b5:02:a8:84 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000373931364833
+4: ens1f0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:28 brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0100000000000000000000353435305448
+5: ens1f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:2c brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000353435305448
+EOF
+      expect(resource[:device]).to eq('ens1f0')
+    end
+
     it 'interface_name returns proper interface name' do
       allow(Puppet::Util::Execution).to receive(:execute)
         .with('/sbin/ip -details -o link show')
