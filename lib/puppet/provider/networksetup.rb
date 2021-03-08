@@ -4,25 +4,8 @@ require 'ipaddr'
 
 #
 class Puppet::Provider::NetworkSetup < Puppet::Provider
-  initvars
-
-  commands ip: 'ip'
-  commands brctl: 'brctl'
-
-  confine true: begin
-                  ip('-V')
-                rescue Puppet::ExecutionFailure, Puppet::MissingCommand
-                  false
-                else
-                  true
-                end
-
   def self.ip_comm
     command(:ip)
-  end
-
-  def self.brctl_comm
-    command(:brctl)
   end
 
   def self.ip_caller(*args)

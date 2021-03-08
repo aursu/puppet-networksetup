@@ -3,10 +3,11 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', 'networksetup')
 Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::NetworkSetup) do
   desc 'Manage network interfaces.'
 
-  confine osfamily: :redhat
-
+  initvars
   commands ip: 'ip'
-  commands brctl: 'brctl'
+  defaultfor :osfamily => :redhat
+
+  mk_resource_methods
 
   def initialize(value = {})
     super(value)
@@ -46,8 +47,6 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
   def ifcfg_data
     @addrinfo ||= self.class.parse_config(config_path)
   end
-
-  mk_resource_methods
 
   def interface_name
     addr = @resource[:hwaddr]
@@ -201,21 +200,6 @@ EOF
     else
       :absent
     end
-  end
-
-  def bridge=(brname)
-    name = @resource[:name]
-    if linkinfo_show['slave-kind'] == 'bridge_slave'
-      if brname == :absent
-        brctl_caller('delif', brname, name)
-      else
-        raise Puppet::Error, _("device #{name} is already a member of a bridge") unless linkinfo_show['master'] == brname
-      end
-    else
-      # eg brctl addif brqfc32e1e1-6f o-bhm0
-      brctl_caller('addif', brname, name)
-    end
-    @property_flush[:bridge] = brname
   end
 
   def destroy

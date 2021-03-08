@@ -119,7 +119,10 @@ Puppet::Type.newtype(:network_iface) do
     # set device if hwaddr provided
     if self[:hwaddr]
       device = provider.interface_name
-      self[:device] = device if device
+      if device
+        self[:device] = device
+        self[:conn_name] unless self[:conn_name]
+      end
     end
 
     # plugins specifics

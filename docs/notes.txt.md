@@ -24,3 +24,7 @@
 
 If not specified either than both will be set to NETMASK=255.255.255.255 and
 PREFIX=32. The existing values from script will be ignored
+
+### Read later
+
+[General RHEL networking topics](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/general-rhel-networking-topics_configuring-and-managing-networking)

@@ -150,7 +150,7 @@ EOF
 5: ens1f1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000\    link/ether d4:85:64:7c:f8:2c brd ff:ff:ff:ff:ff:ff promiscuity 0 addrgenmode none numtxqueues 32 numrxqueues 32 gso_max_size 65513 gso_max_segs 65535 portid 0200000000000000000000353435305448
 EOF
 
-      expect(provider.interface_name).to eq(nil)
+      expect(provider.interface_name).to be_nil
     end
 
     it 'linkinfo_show returns info for interface behind device' do
@@ -224,9 +224,7 @@ EOF
       )
     end
     let(:provider) do
-      provider = subject
-      provider.resource = resource
-      provider
+      resource.provider = subject
     end
 
     it 'returns an array of tun0 interface properties' do
@@ -275,9 +273,7 @@ EOF
       )
     end
     let(:provider) do
-      provider = subject
-      provider.resource = resource
-      provider
+      resource.provider = subject
     end
 
     # rubocop:disable Metrics/LineLength
@@ -359,9 +355,7 @@ EOF
       )
     end
     let(:provider) do
-      provider = subject
-      provider.resource = resource
-      provider
+      resource.provider = subject
     end
 
     it {
@@ -406,9 +400,7 @@ EOF
       )
     end
     let(:provider) do
-      provider = subject
-      provider.resource = resource
-      provider
+      resource.provider = subject
     end
 
     it {
@@ -456,9 +448,7 @@ EOF
       )
     end
     let(:provider) do
-      provider = subject
-      provider.resource = resource
-      provider
+      resource.provider = subject
     end
 
     it {
@@ -534,9 +524,7 @@ EOF
       )
     end
     let(:provider) do
-      provider = subject
-      provider.resource = resource
-      provider
+      resource.provider = subject
     end
 
     it {
@@ -658,9 +646,7 @@ EOF
       )
     end
     let(:provider) do
-      provider = subject
-      provider.resource = resource
-      provider
+      resource.provider = subject
     end
 
     it {

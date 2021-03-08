@@ -64,3 +64,15 @@ All notable changes to this project will be documented in this file.
 * Fix for empty addr_lookup output
 
 **Known Issues**
+
+## Release 1.2.4
+
+**Features**
+
+* Added additional properties for network_iface
+
+**Bugfixes**
+
+* Adjusted provider class methods' return values
+
+**Known Issues**
