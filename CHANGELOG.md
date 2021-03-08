@@ -76,3 +76,14 @@ All notable changes to this project will be documented in this file.
 * Adjusted provider class methods' return values
 
 **Known Issues**
+
+## Release 1.2.5
+
+**Features**
+
+**Bugfixes**
+
+* Added provider brctl with legacy content to allow default :ip provider
+  usage on CentOS 8
+
+**Known Issues**
