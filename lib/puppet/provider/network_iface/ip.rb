@@ -103,6 +103,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_bootproto = @resource[:bootproto] || bootproto
     ifcfg_defroute  = @resource[:defroute]  || defroute
     ifcfg_gateway   = @resource[:gateway]   || gateway
+    ifcfg_hwaddr    = @resource[:hwaddr]    || hwaddr
     ifcfg_dns       = @resource[:dns]       || dns
     ifcfg_dns       = [ifcfg_dns].flatten if ifcfg_dns
 
@@ -124,6 +125,9 @@ NAME=<%= ifcfg_name %>
 <% end %>
 <% if ifcfg_device %>
 DEVICE=<%= ifcfg_device %>
+<% end %>
+<% if ifcfg_hwaddr %>
+HWADDR=<%= ifcfg_hwaddr %>
 <% end %>
 <% if ifcfg_onboot %>
 ONBOOT=<%= ifcfg_onboot %>

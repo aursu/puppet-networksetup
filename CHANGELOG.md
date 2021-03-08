@@ -87,3 +87,13 @@ All notable changes to this project will be documented in this file.
   usage on CentOS 8
 
 **Known Issues**
+
+## Release 1.2.6
+
+**Features**
+
+**Bugfixes**
+
+* Added HWADDR field setup into ifcfg script
+
+**Known Issues**
