@@ -214,7 +214,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
         vxlan_flags.each do |f|
           s = f.to_s
           i = options.index(s)
-          skip unless i
+          next unless i
 
           if options[i + 1].to_s == 'no'
             desc[link_kind][s] = 'no'
@@ -240,7 +240,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
           # <REORDER_HDR,LOOSE_BINDING>
           m = o.match(%r{<(.*)>})
 
-          skip unless m
+          next unless m
 
           flags = m[1].split(',').map { |f| f.to_s.downcase }
           vlan_flags.each do |f|
