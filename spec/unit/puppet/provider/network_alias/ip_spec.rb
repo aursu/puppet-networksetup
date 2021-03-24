@@ -47,7 +47,7 @@ EOL
     }
   end
 
-  describe 'test different IPv4 network settings pass' do
+  describe 'test different IPv6 network settings pass' do
     let(:resource_name) { 'lo:alias6' }
     let(:resource) do
       Puppet::Type.type(:network_alias).new(
@@ -55,6 +55,7 @@ EOL
         ensure: :present,
         ipv6init: true,
         ipv6addr: '2001:1810:4240:3::17/128',
+        ipv6_defaultgw: '2001:1810:4240:3::1',
         provider: :ip,
       )
     end
@@ -65,10 +66,9 @@ EOL
     it {
       expect(provider.ifcfg_content).to eq(<<EOL)
 DEVICE=lo:alias6
-NETMASK=ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
-PREFIX=128
 IPV6ADDR=2001:1810:4240:3::17/128
 IPV6INIT=yes
+IPV6_DEFAULTGW=2001:1810:4240:3::1
 EOL
     }
 
@@ -124,6 +124,53 @@ PREFIX=27
 IPV6ADDR=2001:1810:4240:3::17/128
 IPV6INIT=yes
 IPV6ADDR_SECONDARIES="2001:1810:4240:3::1/128 2001:1810:4240:3::2/128 2001:1810:4240:3::3/128"
+EOL
+      }
+    end
+
+    context 'test address prefix length to be added to IPv6 address' do
+      let(:resource) do
+        Puppet::Type.type(:network_alias).new(
+          title: resource_name,
+          ensure: :present,
+          ipv6init: true,
+          ipv6addr: '2001:1810:4240:3::17',
+          provider: :ip,
+        )
+      end
+      let(:provider) do
+        resource.provider = subject
+      end
+
+      it {
+        expect(provider.ifcfg_content).to eq(<<EOL)
+DEVICE=lo:alias6
+IPV6ADDR=2001:1810:4240:3::17/64
+IPV6INIT=yes
+EOL
+      }
+    end
+
+    context 'test address prefix length to be added to IPv6 address' do
+      let(:resource) do
+        Puppet::Type.type(:network_alias).new(
+          title: resource_name,
+          ensure: :present,
+          ipv6init: true,
+          ipv6addr: '2001:1810:4240:3::17/64',
+          ipv6_prefixlength: 80,
+          provider: :ip,
+        )
+      end
+      let(:provider) do
+        resource.provider = subject
+      end
+
+      it {
+        expect(provider.ifcfg_content).to eq(<<EOL)
+DEVICE=lo:alias6
+IPV6ADDR=2001:1810:4240:3::17/80
+IPV6INIT=yes
 EOL
       }
     end

@@ -28,6 +28,10 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
   end
 
+  def ipv6_prefixlength
+    ipv6addr.split('/')[1] if ipv6addr
+  end
+
   def parent_device
     device.split(':').first if device
   end
@@ -36,11 +40,25 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_device = @resource[:device] || device
     ifcfg_ipaddr = @resource[:ipaddr] || ipaddr
     ifcfg_netmask = @resource[:netmask] || netmask
-    ifcfg_ipv6addr = @resource[:ipv6addr] || ipv6addr
     ifcfg_ipv6init = @resource[:ipv6init] || ipv6init
     ifcfg_prefix = @resource[:prefix] || prefix
     ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
+    ifcfg_ipv6_defaultgw = @resource[:ipv6_defaultgw] || ipv6_defaultgw
     ifcfg_type = @resource[:conn_type] || conn_type
+
+    res_ipv6addr = @resource[:ipv6addr]
+    res_prefixlength = @resource[:ipv6_prefixlength]
+    if res_ipv6addr
+      addr, plen = res_ipv6addr.split('/')
+      plen = res_prefixlength if res_prefixlength
+
+      res_ipv6addr = if plen
+                       [addr, plen].join('/')
+                     else
+                       addr
+                     end
+    end
+    ifcfg_ipv6addr = res_ipv6addr || ipv6addr
 
     ERB.new(<<-EOF, nil, '<>').result(binding)
 <% if ifcfg_device %>
@@ -66,6 +84,9 @@ IPV6INIT=<%= ifcfg_ipv6init %>
 <% end %>
 <% if ifcfg_ipv6addr_secondaries %>
 IPV6ADDR_SECONDARIES="<%= [ifcfg_ipv6addr_secondaries].flatten.join(' ') %>"
+<% end %>
+<% if ifcfg_ipv6_defaultgw %>
+IPV6_DEFAULTGW=<%= ifcfg_ipv6_defaultgw %>
 <% end %>
 EOF
   end

@@ -9,7 +9,7 @@ Puppet::Type.type(:network_iface).provide(
   initvars
 
   commands ip: 'ip', brctl: 'brctl'
-  confine :osfamily => :redhat, :operatingsystemmajrelease => ['6', '7']
+  confine osfamily: :redhat, operatingsystemmajrelease: ['6', '7']
 
   mk_resource_methods
 
@@ -34,5 +34,13 @@ Puppet::Type.type(:network_iface).provide(
       brctl_caller('addif', brname, name)
     end
     @property_flush[:bridge] = brname
+  end
+
+  def ipv6addr_secondaries
+    ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
+  end
+
+  def ipv6_prefixlength
+    ipv6addr.split('/')[1] if ipv6addr
   end
 end

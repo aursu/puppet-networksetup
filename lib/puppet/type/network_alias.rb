@@ -72,25 +72,28 @@ Puppet::Type.newtype(:network_alias) do
       maxprefix = 32
       # anyaddr = '0.0.0.0'
       _addr, prefix = self[:ipaddr].split('/', 2)
+
+      if self[:netmask]
+        # self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
+        self[:prefix] = provider.netmask_prefix(self[:netmask])
+      elsif self[:prefix] || prefix
+        self[:prefix] = prefix unless self[:prefix]
+        self[:netmask] = IPAddr.new(fullmask).mask(self[:prefix].to_i).to_s
+      else
+        self[:netmask] = fullmask
+        self[:prefix] = maxprefix
+      end
     elsif self[:ipv6addr] && self[:ipv6init] == 'yes'
-      fullmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'
-      maxprefix = 128
-      # anyaddr = '::'
-      _addr, prefix = self[:ipv6addr].split('/', 2)
+      addr, prefixlength = self[:ipv6addr].split('/', 2)
+      prefixlength ||= 64
+      self[:ipv6addr] = if self[:ipv6_prefixlength]
+                          addr
+                        else
+                          [addr, prefixlength].join('/')
+                        end
     else
       raise Puppet::Error, _("error: didn't set ipv6init") if self[:ipv6addr]
       raise Puppet::Error, _("error: didn't specify ipaddr and ipv6addr address")
-    end
-
-    if self[:netmask]
-      # self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
-      self[:prefix] = provider.netmask_prefix(self[:netmask])
-    elsif self[:prefix] || prefix
-      self[:prefix] = prefix unless self[:prefix]
-      self[:netmask] = IPAddr.new(fullmask).mask(self[:prefix].to_i).to_s
-    else
-      self[:netmask] = fullmask
-      self[:prefix] = maxprefix
     end
   end
 end

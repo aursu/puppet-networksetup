@@ -1,11 +1,12 @@
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'networksetup'))
+require 'ipaddr'
 
 Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::NetworkSetup) do
   desc 'Manage network interfaces.'
 
   initvars
   commands ip: 'ip'
-  defaultfor :osfamily => :redhat
+  defaultfor osfamily: :redhat
 
   mk_resource_methods
 
@@ -79,12 +80,21 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
 
   # return Array of Hashes with interface addresses' infor or empty array
   def addrinfo_show
-    name = linkinfo_name['ifname']
+    name = linkinfo_show['ifname']
     @addr ||= self.class.addrinfo_show(name)
+  end
+
+  def host_number(addr = nil)
+    addr = validate_ip(addr)
+    addr.to_i.to_s(16).rjust(8, '0') if addr
   end
 
   def ipv6addr_secondaries
     ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
+  end
+
+  def ipv6_prefixlength
+    ipv6addr.split('/')[1] if ipv6addr
   end
 
   def ifcfg_content
@@ -96,16 +106,30 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_onboot    = @resource[:onboot]    || onboot
     ifcfg_name      = @resource[:conn_name] || conn_name
     ifcfg_type      = @resource[:conn_type] || conn_type
-    ifcfg_ipv6addr  = @resource[:ipv6addr]  || ipv6addr
     ifcfg_ipv6init  = @resource[:ipv6init]  || ipv6init
     ifcfg_prefix    = @resource[:prefix]    || prefix
     ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
+    ifcfg_ipv6_defaultgw = @resource[:ipv6_defaultgw] || ipv6_defaultgw
     ifcfg_bootproto = @resource[:bootproto] || bootproto
     ifcfg_defroute  = @resource[:defroute]  || defroute
     ifcfg_gateway   = @resource[:gateway]   || gateway
     ifcfg_hwaddr    = @resource[:hwaddr]    || hwaddr
     ifcfg_dns       = @resource[:dns]       || dns
     ifcfg_dns       = [ifcfg_dns].flatten if ifcfg_dns
+
+    res_ipv6addr    = @resource[:ipv6addr]
+    res_prefixlength = @resource[:ipv6_prefixlength]
+    if res_ipv6addr
+      addr, plen = res_ipv6addr.split('/')
+      plen = res_prefixlength if res_prefixlength
+
+      res_ipv6addr = if plen
+                       [addr, plen].join('/')
+                     else
+                       addr
+                     end
+    end
+    ifcfg_ipv6addr = res_ipv6addr || ipv6addr
 
     ERB.new(<<-EOF, nil, '<>').result(binding)
 <% if ifcfg_type %>
@@ -155,6 +179,9 @@ IPV6ADDR=<%= ifcfg_ipv6addr %>
 <% end %>
 <% if ifcfg_ipv6addr_secondaries %>
 IPV6ADDR_SECONDARIES="<%= [ifcfg_ipv6addr_secondaries].flatten.join(' ') %>"
+<% end %>
+<% if ifcfg_ipv6_defaultgw %>
+IPV6_DEFAULTGW=<%= ifcfg_ipv6_defaultgw %>
 <% end %>
 <% if ifcfg_dns %>
 <% for i in 1..ifcfg_dns.size do %>
@@ -214,7 +241,7 @@ EOF
 
   def exists?
     # no ifname - no  device
-    # we want to have both device and its ifcfg scrip
+    # we want to have both device and its ifcfg script
     linkinfo_show['ifname'].is_a?(String) && config_path
   end
 

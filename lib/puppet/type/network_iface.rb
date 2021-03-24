@@ -2,6 +2,8 @@ $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', '..'))
 require 'puppet_x/networksetup/customcomm'
 require 'puppet_x/networksetup/customprop'
 
+require 'puppet/parameter/boolean'
+
 Puppet::Type.newtype(:network_iface) do
   extend CustomComm
 
@@ -89,21 +91,75 @@ Puppet::Type.newtype(:network_iface) do
     desc 'Name server address to be placed in /etc/resolv.conf (DNS{1,2})'
   end
 
+  newparam(:ipv6_setup, boolean: true, parent: Puppet::Parameter::Boolean) do
+    desc 'Setup IPv6 address based on ipv6_netprefix and host number'
+
+    defaultto false
+  end
+
+  newparam(:ipv6_netprefix) do
+    desc 'First 6 octects of IPv6 address to combine with host number'
+  end
+
+  # Hex representation of IPv4 in 2 octets divided by colon
+  # return String or nil
+  def addr_host_number(addr = nil)
+    host_number = provider.host_number(addr)
+
+    # split hex representation of IPv4 address on 2 parts and join them with ":"
+    (host_number[0, 4] + ':' + host_number[4, 4]) if host_number
+  end
+
   validate do
+    if self[:ipv6init] == 'yes'
+      if self[:ipv6addr]
+        addr, prefixlength = self[:ipv6addr].split('/', 2)
+        prefixlength ||= 64
+        self[:ipv6addr] = if self[:ipv6_prefixlength]
+                            addr
+                          else
+                            [addr, prefixlength].join('/')
+                          end
+      elsif self[:ipv6_setup]
+        # 6-octet network prefix should be provided to generate IPv6 based on IPv4 address
+        unless self[:ipv6_netprefix]
+          raise Puppet::Error,
+                _('error: ipv6_netprefix parameter must be specified when ipv6_setup is true')
+        end
+
+        host_number = if self[:ipaddr]
+                        addr_host_number(self[:ipaddr])
+                      else
+                        addr_host_number(provider.ipaddr)
+                      end
+
+        raise Puppet::Error, _(<<-EOT) unless host_number
+          error: IPADDR must be available in ifcfg script or specified through ipaddr
+          property in order to combine IPv6 address
+        EOT
+
+        # validate
+        addr = [self[:ipv6_netprefix], host_number].join(':')
+
+        unless provider.validate_ip(addr)
+          raise Puppet::Error,
+                _('error: ipv6_netprefix must be a valid IPv6 address when ending with host number')
+        end
+
+        # default IPv6 prefix length is 64
+        prefixlength = self[:ipv6_prefixlength] || 64
+
+        self[:ipv6addr] = [addr, prefixlength].join('/')
+      end
+    end
+
     # setup IP mask depends on IPv6/IPv4 address
     if self[:ipaddr]
       fullmask = '255.255.255.255'
       maxprefix = 32
       # anyaddr = '0.0.0.0'
       _addr, prefix = self[:ipaddr].split('/', 2)
-    elsif self[:ipv6addr] && self[:ipv6init] == 'yes'
-      fullmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'
-      maxprefix = 128
-      # anyaddr = '::'
-      _addr, prefix = self[:ipv6addr].split('/', 2)
-    end
 
-    if self[:ipaddr] || (self[:ipv6addr] && self[:ipv6init] == 'yes')
       if self[:netmask]
         # self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
         self[:prefix] = provider.netmask_prefix(self[:netmask])

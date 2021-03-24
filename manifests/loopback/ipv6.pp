@@ -15,7 +15,7 @@ define networksetup::loopback::ipv6 (
   Stdlib::IP::Address::V6
           $addr,
   Optional[Integer]
-          $prefix  = undef,
+          $prefixlength     = undef,
   Array[Stdlib::IP::Address::V6]
           $addr_secondaries = [],
 )
@@ -24,8 +24,8 @@ define networksetup::loopback::ipv6 (
 
   $addrinfo = split($addr, '/')
 
-  $addrprefix = $prefix ? {
-    Integer => $prefix,
+  $addrprefixlen = $prefixlength ? {
+    Integer => $prefixlength,
     default => $addrinfo[1],
   }
 
@@ -34,7 +34,7 @@ define networksetup::loopback::ipv6 (
     conn_type            => 'Ethernet',
     ipv6init             => true,
     ipv6addr             => $addrinfo[0],
-    prefix               => $addrprefix,
+    ipv6_prefixlength    => $addrprefixlen,
     ipv6addr_secondaries => $addr_secondaries,
     require              => Class['networksetup::loopback'],
   }
