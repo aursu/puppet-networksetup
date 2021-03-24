@@ -130,8 +130,7 @@ EOT
         described_class.new(ensure: :present,
                             name: 'eth0',
                             ipv6init: 'yes',
-                            ipv6_setup: true
-        )
+                            ipv6_setup: true)
       }.to raise_error(Puppet::Error, %r{ipv6_netprefix parameter must be specified})
     end
 
@@ -141,8 +140,7 @@ EOT
                             name: 'eth0',
                             ipv6init: 'yes',
                             ipv6_setup: true,
-                            ipv6_netprefix: 'fe80::dea6:32ff',
-        )
+                            ipv6_netprefix: 'fe80::dea6:32ff')
       }.to raise_error(Puppet::Error, %r{error: IPADDR must be available})
     end
 
@@ -154,7 +152,7 @@ EOT
                             ipv6init: 'yes',
                             ipv6_setup: true,
                             ipv6_netprefix: 'fe80:dea6:32ff',
-                            provider: :ip)[:ipv6addr]
+                            provider: :ip)
       }.to raise_error(Puppet::Error, %r{ipv6_netprefix must be a valid IPv6 address when ending with host number})
     end
 
@@ -166,7 +164,7 @@ EOT
                             ipv6init: 'yes',
                             ipv6_setup: true,
                             ipv6_netprefix: 'fe80::dea6:32ff',
-                            provider: :ip)[:ipv6addr]
+                            provider: :ip)[:ipv6addr],
       ).to eq('fe80::dea6:32ff:0a64:1007/64')
     end
 
@@ -185,7 +183,7 @@ EOT
                             ipv6init: 'yes',
                             ipv6_setup: true,
                             ipv6_netprefix: 'fe80::dea6:32ff',
-                            provider: :ip)[:ipv6addr]
+                            provider: :ip)[:ipv6addr],
       ).to eq('fe80::dea6:32ff:0a64:1007/64')
     end
   end

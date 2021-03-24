@@ -97,3 +97,17 @@ All notable changes to this project will be documented in this file.
 * Added HWADDR field setup into ifcfg script
 
 **Known Issues**
+
+## Release 1.3.0
+
+**Features**
+
+* Introduced ipv6_setup flag to generate IPv6 address based on existing IPv4
+* Added IPv6  default gateway
+* Introduced ipv6_prefixlength for IPv6 address prefix
+
+**Bugfixes**
+
+*  Corrected prefix and netmask usage (in favor of ipv6_prefixlength)
+
+**Known Issues**
