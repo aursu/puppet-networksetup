@@ -111,3 +111,14 @@ All notable changes to this project will be documented in this file.
 *  Corrected prefix and netmask usage (in favor of ipv6_prefixlength)
 
 **Known Issues**
+
+## Release 1.4.0
+
+**Features**
+
+* Added /etc/sysconfig/network configuration management
+* Added service `network` Puppet resource to control it
+
+**Bugfixes**
+
+**Known Issues**
