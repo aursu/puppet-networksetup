@@ -606,6 +606,7 @@ EOF
         'dns' => ['10.100.0.10', '10.100.0.20'],
         'gateway' => '10.100.16.1',
         'ipaddr' => '10.100.16.7',
+        'ipv6_autoconf' => 'yes',
         'ipv6addr_secondaries' => '2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64 2001:ba0:2020:bce5:cdb:a034:601e:e952/64',
         'ipv6init' => 'yes',
         'onboot' => 'yes',
