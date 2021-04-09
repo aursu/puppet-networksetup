@@ -132,3 +132,13 @@ All notable changes to this project will be documented in this file.
 * Bugfix: change label on address alias
 
 **Known Issues**
+
+## Release 1.4.2
+
+**Features**
+
+* Added alias name validation on length
+
+**Bugfixes**
+
+**Known Issues**
