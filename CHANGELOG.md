@@ -122,3 +122,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.4.1
+
+**Features**
+
+**Bugfixes**
+
+* Bugfix: change label on address alias
+
+**Known Issues**
