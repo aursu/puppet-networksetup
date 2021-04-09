@@ -46,6 +46,7 @@ Puppet::Type.newtype(:network_alias) do
 
     validate do |val|
       raise Puppet::Error, _("Invalid device name \"#{val}\"") unless val =~ %r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$}
+      raise Puppet::Error, _("device name \"#{val}\" is too long") if val.length > 15
     end
   end
 
