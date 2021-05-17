@@ -166,7 +166,7 @@ Puppet::Type.newtype(:network_iface) do
       fullmask = '255.255.255.255'
       maxprefix = 32
       # anyaddr = '0.0.0.0'
-      _addr, prefix = self[:ipaddr].split('/', 2)
+      addr, prefix = self[:ipaddr].split('/', 2)
 
       if self[:netmask]
         # self[:prefix] = IPAddr.new(anyaddr).mask(self[:netmask]).prefix
@@ -178,6 +178,8 @@ Puppet::Type.newtype(:network_iface) do
         self[:netmask] = fullmask
         self[:prefix] = maxprefix
       end
+
+      self[:ipaddr] = addr if prefix
     end
 
     # set device if hwaddr provided
