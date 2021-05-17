@@ -116,6 +116,8 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_hwaddr    = @resource[:hwaddr]    || hwaddr
     ifcfg_dns       = @resource[:dns]       || dns
     ifcfg_dns       = [ifcfg_dns].flatten if ifcfg_dns
+    ifcfg_slave     = @resource[:slave]     || slave
+    ifcfg_master    = @resource[:master]    || master
 
     res_ipv6addr    = @resource[:ipv6addr]
     res_prefixlength = @resource[:ipv6_prefixlength]
@@ -187,6 +189,10 @@ IPV6_DEFAULTGW=<%= ifcfg_ipv6_defaultgw %>
 <% for i in 1..ifcfg_dns.size do %>
 DNS<%= i %>=<%= ifcfg_dns[i - 1] %>
 <% end %>
+<% end %>
+<% if ifcfg_master && ifcfg_slave  %>
+SLAVE=<%= ifcfg_slave %>
+MASTER=<%= ifcfg_master %>
 <% end %>
 EOF
   end

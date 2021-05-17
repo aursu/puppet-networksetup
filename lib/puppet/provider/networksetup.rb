@@ -561,11 +561,13 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       'IPV6_DEFAULTGW'       => 'ipv6_defaultgw',
       'IPV6ADDR_SECONDARIES' => 'ipv6addr_secondaries',
       'IPV6_AUTOCONF'        => 'ipv6_autoconf',
+      'MASTER'    => 'master',
       'NAME'      => 'conn_name',
       'NETMASK'   => 'netmask',
       'NETWORK'   => 'network',
       'ONBOOT'    => 'onboot',
       'PREFIX'    => 'prefix',
+      'SLAVE'     => 'slave',
       'TYPE'      => 'conn_type',
     }
 
@@ -670,11 +672,13 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
      :ipv6_defaultgw,
      :ipv6addr_secondaries,
      :ipv6_autoconf,
+     :master,
      :netmask,
      :network,
      :onboot,
      :parent_device,
-     :prefix].each do |attr|
+     :prefix,
+     :slave].each do |attr|
       define_method(attr) do
         ifcfg_data[attr.to_s]
       end

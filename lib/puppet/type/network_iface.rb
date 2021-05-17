@@ -87,6 +87,14 @@ Puppet::Type.newtype(:network_iface) do
     desc 'Whether to assign default route to connection (DEFROUTE)'
   end
 
+  newproperty(:slave, parent: PuppetX::NetworkSetup::SwitchProperty) do
+    desc 'Whether this device is controlled by the channel bonding interface (SLAVE)'
+  end
+
+  newparam(:master) do
+    desc 'Channel bonding interface to which the Ethernet interface is linked. (MASTER)'
+  end
+
   newproperty(:dns, array_matching: :all, parent: PuppetX::NetworkSetup::IPProperty) do
     desc 'Name server address to be placed in /etc/resolv.conf (DNS{1,2})'
   end
@@ -177,8 +185,13 @@ Puppet::Type.newtype(:network_iface) do
       device = provider.interface_name
       if device
         self[:device] = device
-        self[:conn_name] unless self[:conn_name]
+        self[:conn_name] = device unless self[:conn_name]
       end
+    end
+
+    if self[:slave] == 'yes'
+      raise Puppet::Error, _('error: channel bonding interface must be provided via :master parameter') if self[:master].nil?
+      raise Puppet::Error, _('error: channel bonding interface could not be :absent (:master parameter)') if self[:master] == :absent
     end
 
     # plugins specifics

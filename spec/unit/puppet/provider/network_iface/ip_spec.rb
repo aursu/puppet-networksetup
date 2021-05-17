@@ -773,4 +773,32 @@ EOL
       )
     }
   end
+
+  describe 'test master/slave settings' do
+    let(:resource_name) { 'em2' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        title: resource_name,
+        ensure: :present,
+        conn_name: resource_name,
+        device: resource_name,
+        master: 'bond0',
+        slave: true,
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it {
+      expect(provider.ifcfg_content).to eq(<<EOL)
+NAME=em2
+DEVICE=em2
+ONBOOT=yes
+SLAVE=yes
+MASTER=bond0
+EOL
+    }
+  end
 end

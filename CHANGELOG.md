@@ -142,3 +142,14 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.4.3
+
+**Features**
+
+* Added abilitiees to process MAC address
+* Added master/slave parameters for bond slave interfaces
+
+**Bugfixes**
+
+**Known Issues**
