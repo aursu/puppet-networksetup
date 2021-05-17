@@ -609,7 +609,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   def self.get_config_by_name(name)
     config_all.each do |config|
       desc = parse_config(config)
-      return config if desc['conn_name'].casecmp(name)
+      return config if desc['conn_name'] && desc['conn_name'].casecmp(name)
     end
     nil
   end
@@ -618,7 +618,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   def self.get_config_by_hwaddr(addr)
     config_all.each do |config|
       desc = parse_config(config)
-      return config if desc['hwaddr'].casecmp(addr)
+      return config if desc['hwaddr'] && desc['hwaddr'].casecmp(addr)
     end
     nil
   end
