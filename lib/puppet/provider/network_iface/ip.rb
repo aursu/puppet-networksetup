@@ -121,7 +121,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_master    = @resource[:master]    || master
     ifcfg_nm_controlled = @resource[:nm_controlled] || nm_controlled
 
-    res_ipv6addr    = @resource[:ipv6addr]
+    res_ipv6addr = @resource[:ipv6addr]
     res_prefixlength = @resource[:ipv6_prefixlength]
     if res_ipv6addr
       addr, plen = res_ipv6addr.split('/')
