@@ -119,6 +119,17 @@ Puppet::Type.newtype(:network_iface) do
     desc 'First 6 octects of IPv6 address to combine with host number'
   end
 
+  newproperty(:nm_controlled, parent: PuppetX::NetworkSetup::SwitchProperty) do
+    desc 'Tells NetworkManager if it should handle this interface or not (NM_CONTROLLED)'
+
+    defaultto 'no'
+  end
+
+  # https://access.redhat.com/solutions/3101041
+  newproperty(:ipv6_defroute, parent: PuppetX::NetworkSetup::SwitchProperty) do
+    desc 'Tell if the interface defining it should be assigned the default route (IPV6_DEFROUTE)'
+  end
+
   # Hex representation of IPv4 in 2 octets divided by colon
   # return String or nil
   def addr_host_number(addr = nil)

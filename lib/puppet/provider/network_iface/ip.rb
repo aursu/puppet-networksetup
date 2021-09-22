@@ -110,6 +110,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_prefix    = @resource[:prefix]    || prefix
     ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
     ifcfg_ipv6_defaultgw = @resource[:ipv6_defaultgw] || ipv6_defaultgw
+    ifcfg_ipv6_defroute = @resource[:ipv6_defroute] || ipv6_defroute
     ifcfg_bootproto = @resource[:bootproto] || bootproto
     ifcfg_defroute  = @resource[:defroute]  || defroute
     ifcfg_gateway   = @resource[:gateway]   || gateway
@@ -118,6 +119,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_dns       = [ifcfg_dns].flatten if ifcfg_dns
     ifcfg_slave     = @resource[:slave]     || slave
     ifcfg_master    = @resource[:master]    || master
+    ifcfg_nm_controlled = @resource[:nm_controlled] || nm_controlled
 
     res_ipv6addr    = @resource[:ipv6addr]
     res_prefixlength = @resource[:ipv6_prefixlength]
@@ -155,6 +157,9 @@ DEVICE=<%= ifcfg_device %>
 <% if ifcfg_hwaddr %>
 HWADDR=<%= ifcfg_hwaddr %>
 <% end %>
+<% if ifcfg_nm_controlled %>
+NM_CONTROLLED=<%= ifcfg_nm_controlled %>
+<% end %>
 <% if ifcfg_onboot %>
 ONBOOT=<%= ifcfg_onboot %>
 <% end %>
@@ -184,6 +189,9 @@ IPV6ADDR_SECONDARIES="<%= [ifcfg_ipv6addr_secondaries].flatten.join(' ') %>"
 <% end %>
 <% if ifcfg_ipv6_defaultgw %>
 IPV6_DEFAULTGW=<%= ifcfg_ipv6_defaultgw %>
+<% end %>
+<% if ifcfg_ipv6_defroute %>
+IPV6_DEFROUTE=<%= ifcfg_ipv6_defroute %>
 <% end %>
 <% if ifcfg_dns %>
 <% for i in 1..ifcfg_dns.size do %>

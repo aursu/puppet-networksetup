@@ -163,3 +163,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.4.5
+
+**Features**
+
+* Added support for settings NM_CONTROLLED and IPV6_DEFROUTE
+
+**Bugfixes**
+
+**Known Issues**

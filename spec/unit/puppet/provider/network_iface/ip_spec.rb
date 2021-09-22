@@ -473,6 +473,7 @@ EOF
       expect(provider.ifcfg_content).to eq(<<EOF)
 NAME=loopback
 DEVICE=lo
+NM_CONTROLLED=no
 ONBOOT=yes
 IPADDR=127.0.0.1
 NETMASK=255.0.0.0
@@ -496,6 +497,7 @@ EOF
         .with(<<EOF)
 NAME=loopback
 DEVICE=lo
+NM_CONTROLLED=no
 ONBOOT=yes
 IPADDR=127.0.0.1
 NETMASK=255.0.0.0
@@ -543,6 +545,7 @@ EOF
 TYPE=Ethernet
 NAME=loopback
 DEVICE=lo
+NM_CONTROLLED=no
 ONBOOT=yes
 IPADDR=127.0.0.53
 PREFIX=27
@@ -606,6 +609,7 @@ EOF
         'dns' => ['10.100.0.10', '10.100.0.20'],
         'gateway' => '10.100.16.1',
         'ipaddr' => '10.100.16.7',
+        'ipv6_defroute' => 'yes',
         'ipv6_autoconf' => 'yes',
         'ipv6addr_secondaries' => '2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64 2001:ba0:2020:bce5:cdb:a034:601e:e952/64',
         'ipv6init' => 'yes',
@@ -621,12 +625,14 @@ DEFROUTE=yes
 IPV6INIT=yes
 NAME=ens1f0
 DEVICE=ens1f0
+NM_CONTROLLED=no
 ONBOOT=yes
 IPADDR=10.100.16.7
 PREFIX=26
 NETMASK=255.255.255.192
 GATEWAY=10.100.16.1
 IPV6ADDR_SECONDARIES="2a03:2880:f1ff:83:face:b00c:0:25de 2a00:1450:4001:828::2004"
+IPV6_DEFROUTE=yes
 DNS1=8.8.4.4
 DNS2=8.8.8.8
 EOF
@@ -795,6 +801,7 @@ EOL
       expect(provider.ifcfg_content).to eq(<<EOL)
 NAME=em2
 DEVICE=em2
+NM_CONTROLLED=no
 ONBOOT=yes
 SLAVE=yes
 MASTER=bond0
@@ -803,18 +810,13 @@ EOL
   end
 
   describe 'test DNS unset' do
-    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-ens1f0') }
-    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-ens1f0', 'w', 0o600) }
+    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-eth0') }
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-eth0', 'w', 0o600) }
 
     let(:resource_name) { 'eth0' }
     let(:resource) do
       Puppet::Type.type(:network_iface).new(
         name: resource_name,
-        ensure: :present,
-        device: 'ens1f0',
-        ipaddr: '10.100.16.7',
-        prefix: 26,
-        conn_type: 'Ethernet',
         dns: :absent,
         provider: :ip,
       )
@@ -836,18 +838,17 @@ EOL
 
       expect(provider.ifcfg_data).to eq(
         'bootproto' => 'none',
-        'conn_name' => 'ens1f0',
         'conn_type' => 'Ethernet',
         'defroute' => 'yes',
-        'device' => 'ens1f0',
-        'dns' => ['10.100.0.10', '10.100.0.20'],
-        'gateway' => '10.100.16.1',
-        'ipaddr' => '10.100.16.7',
-        'ipv6_autoconf' => 'yes',
-        'ipv6addr_secondaries' => '2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64 2001:ba0:2020:bce5:cdb:a034:601e:e952/64',
+        'device' => 'eth0',
+        'hwaddr' => '00:50:56:8e:08:20',
+        'ipaddr' => '192.168.55.195',
+        'ipv6_defroute' => 'yes',
+        'ipv6addr' => '2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64',
         'ipv6init' => 'yes',
+        'nm_controlled' => 'no',
         'onboot' => 'yes',
-        'prefix' => '26',
+        'prefix' => '25',
       )
 
       expect(Puppet::Util::Execution).to receive(:execute)
@@ -859,14 +860,14 @@ TYPE=Ethernet
 BOOTPROTO=none
 DEFROUTE=yes
 IPV6INIT=yes
-NAME=ens1f0
-DEVICE=ens1f0
+DEVICE=eth0
+HWADDR=00:50:56:8e:08:20
+NM_CONTROLLED=no
 ONBOOT=yes
-IPADDR=10.100.16.7
-PREFIX=26
-NETMASK=255.255.255.192
-GATEWAY=10.100.16.1
-IPV6ADDR_SECONDARIES="2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64 2001:ba0:2020:bce5:cdb:a034:601e:e952/64"
+IPADDR=192.168.55.195
+PREFIX=25
+IPV6ADDR=2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64
+IPV6_DEFROUTE=yes
 EOF
 
       provider.create
