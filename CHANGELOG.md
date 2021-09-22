@@ -153,3 +153,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.4.4
+
+**Features**
+
+* Added abilitiees to remove DNS records from ifcfg file
+
+**Bugfixes**
+
+**Known Issues**

@@ -495,7 +495,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   def self.validate_ip(ip)
     return nil unless ip
     IPAddr.new(ip)
-  rescue IPAddr::InvalidAddressError
+  rescue IPAddr::InvalidAddressError, IPAddr::AddressFamilyError
     nil
   end
 

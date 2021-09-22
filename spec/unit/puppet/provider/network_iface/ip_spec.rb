@@ -801,4 +801,75 @@ MASTER=bond0
 EOL
     }
   end
+
+  describe 'test DNS unset' do
+    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-ens1f0') }
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-ens1f0', 'w', 0o600) }
+
+    let(:resource_name) { 'eth0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        ensure: :present,
+        device: 'ens1f0',
+        ipaddr: '10.100.16.7',
+        prefix: 26,
+        conn_type: 'Ethernet',
+        dns: :absent,
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0')
+        .and_return(true)
+      allow(File).to receive(:read)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0')
+        .and_return(ifcfg_content)
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0', 'w', 0o600).and_return(ifcfg)
+
+      expect(provider.ifcfg_data).to eq(
+        'bootproto' => 'none',
+        'conn_name' => 'ens1f0',
+        'conn_type' => 'Ethernet',
+        'defroute' => 'yes',
+        'device' => 'ens1f0',
+        'dns' => ['10.100.0.10', '10.100.0.20'],
+        'gateway' => '10.100.16.1',
+        'ipaddr' => '10.100.16.7',
+        'ipv6_autoconf' => 'yes',
+        'ipv6addr_secondaries' => '2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64 2001:ba0:2020:bce5:cdb:a034:601e:e952/64',
+        'ipv6init' => 'yes',
+        'onboot' => 'yes',
+        'prefix' => '26',
+      )
+
+      expect(Puppet::Util::Execution).to receive(:execute)
+        .with('/etc/sysconfig/network-scripts/ifup /etc/sysconfig/network-scripts/ifcfg-eth0')
+
+      expect(ifcfg).to receive(:write)
+        .with(<<EOF)
+TYPE=Ethernet
+BOOTPROTO=none
+DEFROUTE=yes
+IPV6INIT=yes
+NAME=ens1f0
+DEVICE=ens1f0
+ONBOOT=yes
+IPADDR=10.100.16.7
+PREFIX=26
+NETMASK=255.255.255.192
+GATEWAY=10.100.16.1
+IPV6ADDR_SECONDARIES="2001:ba0:2020:bce5:678f:bcca:b152:a6ae/64 2001:ba0:2020:bce5:cdb:a034:601e:e952/64"
+EOF
+
+      provider.create
+    }
+  end
 end

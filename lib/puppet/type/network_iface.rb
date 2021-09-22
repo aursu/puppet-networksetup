@@ -97,6 +97,16 @@ Puppet::Type.newtype(:network_iface) do
 
   newproperty(:dns, array_matching: :all, parent: PuppetX::NetworkSetup::IPProperty) do
     desc 'Name server address to be placed in /etc/resolv.conf (DNS{1,2})'
+
+    validate do |value|
+      return true if value.to_s == 'absent'
+      super(value)
+    end
+
+    munge do |val|
+      return [] if val.to_s == 'absent'
+      super(val)
+    end
   end
 
   newparam(:ipv6_setup, boolean: true, parent: Puppet::Parameter::Boolean) do
