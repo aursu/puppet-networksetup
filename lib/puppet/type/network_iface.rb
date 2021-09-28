@@ -130,6 +130,12 @@ Puppet::Type.newtype(:network_iface) do
     desc 'Tell if the interface defining it should be assigned the default route (IPV6_DEFROUTE)'
   end
 
+  newparam(:nocreate, boolean: true, parent: Puppet::Parameter::Boolean) do
+    desc 'Do not create configuration script if it is not exists'
+
+    defaultto false
+  end
+
   # Hex representation of IPv4 in 2 octets divided by colon
   # return String or nil
   def addr_host_number(addr = nil)

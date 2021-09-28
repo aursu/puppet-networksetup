@@ -209,6 +209,7 @@ EOF
     name       = @resource[:name]
     kind       = @resource[:link_kind]
     ifcfg_type = @resource[:conn_type] || conn_type
+    nocreate   = @resource[:nocreate]
 
     case kind
     when :veth
@@ -217,14 +218,17 @@ EOF
       self.class.link_create(name, 'type', 'veth', 'peer', 'name', peer)
     end
 
-    f = File.open(config_path_new, 'w', 0o600)
+    ifcfg = config_path_new
+    return if nocreate && !File.exist?(ifcfg)
+
+    f = File.open(ifcfg, 'w', 0o600)
     f.write(ifcfg_content)
     f.close
 
     # run ifup command only if TYPE is set in ifcfg configuration script
     return unless ifcfg_type
 
-    self.class.system_caller('ifup', config_path_new)
+    self.class.system_caller('ifup', ifcfg)
   end
 
   def link_kind
@@ -254,22 +258,31 @@ EOF
   end
 
   def exists?
+    nocreate = @resource[:nocreate]
+    ifcfg = config_path
+
+    return true if nocreate && !ifcfg
+
     # no ifname - no  device
     # we want to have both device and its ifcfg script
-    linkinfo_show['ifname'].is_a?(String) && config_path
+    linkinfo_show['ifname'].is_a?(String) && ifcfg
   end
 
   def flush
     return if @property_flush.empty?
     ifcfg_type = @resource[:conn_type] || conn_type
 
-    f = File.open(config_path_new, 'w', 0o600)
+    ifcfg = config_path_new
+
+    return if nocreate && !File.exist?(ifcfg)
+
+    f = File.open(ifcfg, 'w', 0o600)
     f.write(ifcfg_content)
     f.close
 
     # run ifup command only if TYPE is set in ifcfg configuration script
     return unless ifcfg_type
 
-    self.class.system_caller('ifup', config_path_new)
+    self.class.system_caller('ifup', ifcfg)
   end
 end

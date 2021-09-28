@@ -873,4 +873,79 @@ EOF
       provider.create
     }
   end
+
+  describe 'create non-existing ifcfg script with Type=Ethernet' do
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-eth0', 'w', 0o600) }
+
+    let(:resource_name) { 'eth0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        dns: :absent,
+        conn_type: 'Ethernet',
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0')
+        .and_return(false)
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0', 'w', 0o600).and_return(ifcfg)
+
+      expect(provider.ifcfg_data).to eq({})
+
+      expect(Puppet::Util::Execution).to receive(:execute)
+        .with('/etc/sysconfig/network-scripts/ifup /etc/sysconfig/network-scripts/ifcfg-eth0')
+
+      expect(ifcfg).to receive(:write)
+        .with(<<EOF)
+TYPE=Ethernet
+NM_CONTROLLED=no
+ONBOOT=yes
+EOF
+
+      provider.create
+    }
+  end
+
+  describe 'do not create non-existing ifcfg script' do
+    let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-eth0', 'w', 0o600) }
+
+    let(:resource_name) { 'eth0' }
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: resource_name,
+        dns: :absent,
+        nocreate: 'Ethernet',
+        nocreate: true,
+        provider: :ip,
+      )
+    end
+    let(:provider) do
+      resource.provider = subject
+    end
+
+    it {
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0')
+        .and_return(false)
+      allow(File).to receive(:open)
+        .with('/etc/sysconfig/network-scripts/ifcfg-eth0', 'w', 0o600).and_return(ifcfg)
+
+      expect(provider.ifcfg_data).to eq({})
+
+      expect(Puppet::Util::Execution).not_to receive(:execute)
+
+      expect(ifcfg).not_to receive(:write)
+
+      provider.create
+    }
+  end
 end
