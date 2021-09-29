@@ -173,3 +173,14 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.4.6
+
+**Features**
+
+* Added nocreate flag for network_interface in order to not create
+  ifcfg script if it does not exist
+
+**Bugfixes**
+
+**Known Issues**
