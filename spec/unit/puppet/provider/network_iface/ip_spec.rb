@@ -922,7 +922,7 @@ EOF
       Puppet::Type.type(:network_iface).new(
         name: resource_name,
         dns: :absent,
-        nocreate: 'Ethernet',
+        conn_type: 'Ethernet',
         nocreate: true,
         provider: :ip,
       )
