@@ -101,3 +101,8 @@ IPV6_DEFAULTGW="<%= @ipv6_defaultgw %>"
 #   Default: SIGHUP
 #
 # IPv6 options above can be overridden in interface-specific configuration.
+<% if @network_hostname -%>
+HOSTNAME=<%= @network_hostname %>
+<% elsif @puppet_propagate && @networking_fqdn -%>
+HOSTNAME=<%= @networking_fqdn %>
+<% end -%>

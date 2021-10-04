@@ -22,16 +22,27 @@
 #     IPV6_DEFAULTGW="fe80::1%eth0"
 #       Add default route through fe80::1 and device eth0
 #
+# @param hostname
+#   Set HOSTNAME variable inside system configuration file /etc/sysconfig/network
+#
+# @param puppet_propagate
+#   Propagate variables inside /etc/sysconfig/network from Puppet facts
+#   Parameter hostname has higher priority
+#
 # @example
 #   include networksetup::sysconfig
 class networksetup::sysconfig (
-  Boolean $nozeroconf     = true,
-  Boolean $ipv6_autoconf  = false,
+  Boolean $nozeroconf       = true,
+  Boolean $ipv6_autoconf    = false,
   Optional[String]
-          $ipv6_defaultgw = undef,
+          $ipv6_defaultgw   = undef,
+  Optional[Stdlib::Fqdn]
+          $hostname         = undef,
+  Boolean $puppet_propagate = false,
 )
 {
   $networking = true
+  $network_hostname = $hostname
 
   if $ipv6_defaultgw {
     $ipv6_defaultgw_info = split($ipv6_defaultgw, '%')
@@ -39,6 +50,15 @@ class networksetup::sysconfig (
 
     if $gw_addr !~ Stdlib::IP::Address::V6 {
       fail("ipv6_defaultgw must be a valid IPv6 address, not \"${gw_addr}\"")
+    }
+  }
+
+  if $puppet_propagate {
+    if $::facts['networking']['fqdn'] in ['localhost', 'localhost.localdomain'] {
+      $networking_fqdn = undef
+    }
+    else {
+      $networking_fqdn = $::facts['networking']['fqdn']
     }
   }
 
