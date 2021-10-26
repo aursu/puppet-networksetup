@@ -204,3 +204,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.4.9
+
+**Features**
+
+* Added function networksetup::ipv6_compile
+
+**Bugfixes**
+
+**Known Issues**
