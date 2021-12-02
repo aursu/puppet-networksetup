@@ -92,6 +92,12 @@ describe 'networksetup::local_ips' do
           is_expected.to run.with_params('10.300.4.0/24').and_raise_error(%r{expects a Stdlib::IP::Address})
         }
       end
+
+      context 'with undef parameter' do
+        it {
+          is_expected.to run.with_params(nil).and_return(["127.0.0.1", "192.168.218.176", "10.154.4.12", "10.153.1.86"])
+        }
+      end
     end
   end
 end

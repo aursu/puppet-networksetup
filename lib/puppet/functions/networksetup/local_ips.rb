@@ -2,7 +2,7 @@ require 'ipaddr'
 
 Puppet::Functions.create_function(:'networksetup::local_ips') do
   dispatch :local_ips do
-    optional_param 'Stdlib::IP::Address', :ipv4_net
+    optional_param 'Optional[Stdlib::IP::Address]', :ipv4_net
   end
 
   def validate_ip(ip)
