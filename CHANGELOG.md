@@ -214,3 +214,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.4.10
+
+**Features**
+
+* Added function networksetup::local_ips
+
+**Bugfixes**
+
+**Known Issues**
