@@ -13,19 +13,18 @@ Puppet::Functions.create_function(:'networksetup::local_ips') do
   end
 
   def local_ips(ipv4_net = nil)
-    addr = Facter.value(:ipaddress)
+    scope = closure_scope
+    networking = scope['facts']['networking']
+    addr = networking['ip']
+
     net = validate_ip(ipv4_net)
     
-    networking = Facter.value(:networking)
-    ips = if networking
-            networking['interfaces'].map { |_, iface| iface['bindings'] || [] }.flatten.map { |b| b['address'] }
-          else
-            [addr]
-          end
+    ips = networking['interfaces'].map { |_, iface| iface['bindings'] || [] }.flatten.map { |b| b['address'] }
+
     if net
       ips.filter { |a| net.include?(a) }
     else
-      ips
+      [addr].union(ips)
     end
   end
 end

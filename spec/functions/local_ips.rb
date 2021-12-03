@@ -77,7 +77,7 @@ describe 'networksetup::local_ips' do
 
       context 'with no parameters' do
         it {
-          is_expected.to run.and_return(["127.0.0.1", "192.168.218.176", "10.154.4.12", "10.153.1.86"])
+          is_expected.to run.and_return(["192.168.218.176", "127.0.0.1",  "10.154.4.12", "10.153.1.86"])
         }
       end
 
@@ -95,7 +95,19 @@ describe 'networksetup::local_ips' do
 
       context 'with undef parameter' do
         it {
-          is_expected.to run.with_params(nil).and_return(["127.0.0.1", "192.168.218.176", "10.154.4.12", "10.153.1.86"])
+          is_expected.to run.with_params(nil).and_return(["192.168.218.176", "127.0.0.1", "10.154.4.12", "10.153.1.86"])
+        }
+      end
+
+      context 'with broad network' do
+        it {
+          is_expected.to run.with_params('10.152.0.0/14').and_return(["10.154.4.12", "10.153.1.86"])
+        }
+      end
+
+      context 'with unknown network' do
+        it {
+          is_expected.to run.with_params('10.10.0.0/16').and_return([])
         }
       end
     end
