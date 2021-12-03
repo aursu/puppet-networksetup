@@ -22,7 +22,7 @@ Puppet::Functions.create_function(:'networksetup::local_ips') do
     ips = networking['interfaces'].map { |_, iface| iface['bindings'] || [] }.flatten.map { |b| b['address'] }
 
     if net
-      ips.filter { |a| net.include?(a) }
+      ips.select { |a| net.include?(a) }
     else
       [addr].union(ips)
     end
