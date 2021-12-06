@@ -21,7 +21,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     cmdout = Puppet::Util::Execution.execute(cmdline) if cmdline
     return nil if cmdout.nil?
     return nil if cmdout.empty?
-    return cmdout
+    cmdout
   rescue Puppet::ExecutionFailure => detail
     Puppet.debug "Execution of $(#{cmdline}) command failed: #{detail}"
     false
@@ -578,7 +578,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     data = File.read(ifcfg)
     data.each_line do |line|
       # skip comments
-      next if line =~ %r{^\s*#}
+      next if line.match?(%r{^\s*#})
 
       p, v = line.split('=', 2)
       k = map[p]

@@ -18,7 +18,7 @@ Puppet::Functions.create_function(:'networksetup::local_ips') do
     addr = networking['ip']
 
     net = validate_ip(ipv4_net)
-    
+
     ips = networking['interfaces'].map { |_, iface| iface['bindings'] || [] }.flatten.map { |b| b['address'] }
 
     if net

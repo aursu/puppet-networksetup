@@ -21,7 +21,7 @@ Puppet::Type.newtype(:network_addr) do
     desc 'Interface name of the device (DEVICE)'
 
     validate do |val|
-      raise Puppet::Error, _("Invalid device name \"#{val}\"") unless val =~ %r{^[-0-9A-Za-z_]*$}
+      raise Puppet::Error, _("Invalid device name \"#{val}\"") unless val.match?(%r{^[-0-9A-Za-z_]*$})
     end
   end
 
@@ -41,8 +41,8 @@ Puppet::Type.newtype(:network_addr) do
     desc 'Address label on device'
 
     validate do |val|
-      return true if val =~ %r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$}
-      return true if val =~ %r{^[0-9A-Za-z_]+$}
+      return true if val.match?(%r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$})
+      return true if val.match?(%r{^[0-9A-Za-z_]+$})
       raise Puppet::Error, _("Alias name \"#{val}\" is too long") if val.length > 15
       raise Puppet::Error, _("Invalid alias name \"#{val}\"")
     end

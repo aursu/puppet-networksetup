@@ -21,7 +21,7 @@ Puppet::Type.newtype(:network_iface) do
     desc 'Interface name. To lookup ifcgf script inside /etc/sysconfig/network-scripts'
 
     validate do |val|
-      raise Puppet::Error, _("error: invalid interface name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
+      raise Puppet::Error, _("error: invalid interface name (#{val})") unless val.match?(%r{^[-0-9A-Za-z_]*$})
     end
   end
 
@@ -29,7 +29,7 @@ Puppet::Type.newtype(:network_iface) do
     desc 'Interface name of the device (DEVICE)'
 
     validate do |val|
-      raise Puppet::Error, _("error: invalid device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
+      raise Puppet::Error, _("error: invalid device name (#{val})") unless val.match?(%r{^[-0-9A-Za-z_]*$})
     end
   end
 

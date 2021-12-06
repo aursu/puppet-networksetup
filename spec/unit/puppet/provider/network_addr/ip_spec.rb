@@ -47,7 +47,7 @@ EOL
       expect(provider.ifcfg_data).to eq({})
 
       expect(Puppet::Util::Execution).to receive(:execute)
-        .with('/sbin/ip addr add 172.17.0.2 brd \+ dev lo scope host')
+        .with('/sbin/ip addr add 172.17.0.2 brd + dev lo scope host')
 
       provider.create
     }

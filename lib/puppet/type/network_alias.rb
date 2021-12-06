@@ -37,7 +37,7 @@ Puppet::Type.newtype(:network_alias) do
     desc 'Alias name.'
 
     validate do |val|
-      raise Puppet::Error, _("error: invalid alias name (#{val})") unless val =~ %r{^[0-9A-Za-z_]*$}
+      raise Puppet::Error, _("error: invalid alias name (#{val})") unless val.match?(%r{^[0-9A-Za-z_]*$})
     end
   end
 
@@ -45,7 +45,7 @@ Puppet::Type.newtype(:network_alias) do
     desc 'Device ID from network script (DEVICE)'
 
     validate do |val|
-      raise Puppet::Error, _("Invalid device name \"#{val}\"") unless val =~ %r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$}
+      raise Puppet::Error, _("Invalid device name \"#{val}\"") unless val.match?(%r{^([-0-9A-Za-z_]+):([0-9A-Za-z_]+)$})
       raise Puppet::Error, _("device name \"#{val}\" is too long") if val.length > 15
     end
   end
@@ -54,7 +54,7 @@ Puppet::Type.newtype(:network_alias) do
     desc 'Device ID from network script (DEVICE)'
 
     validate do |val|
-      raise Puppet::Error, _("error: invalid parent device name (#{val})") unless val =~ %r{^[-0-9A-Za-z_]*$}
+      raise Puppet::Error, _("error: invalid parent device name (#{val})") unless val.match?(%r{^[-0-9A-Za-z_]*$})
     end
   end
 
