@@ -24,7 +24,8 @@ Puppet::Functions.create_function(:'networksetup::local_ips') do
     if net
       ips.select { |a| net.include?(a) }
     else
-      [addr].union(ips)
+      # ruby 2.6.3+: [addr].union(ips)
+      [addr].concat(ips).uniq
     end
   end
 end
