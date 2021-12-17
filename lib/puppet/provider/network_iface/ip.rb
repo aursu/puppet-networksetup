@@ -271,6 +271,7 @@ EOF
   def flush
     return if @property_flush.empty?
     ifcfg_type = @resource[:conn_type] || conn_type
+    nocreate   = @resource[:nocreate]
 
     ifcfg = config_path_new
 
