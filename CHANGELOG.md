@@ -244,3 +244,13 @@ All notable changes to this project will be documented in this file.
 * Fix flush method in Puppet::Type::Network_iface::ProviderIp
 
 **Known Issues**
+
+## Release 1.5.2
+
+**Features**
+
+* Added support for UUID setting
+
+**Bugfixes**
+
+**Known Issues**
