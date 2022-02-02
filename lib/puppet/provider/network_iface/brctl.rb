@@ -35,12 +35,4 @@ Puppet::Type.type(:network_iface).provide(
     end
     @property_flush[:bridge] = brname
   end
-
-  def ipv6addr_secondaries
-    ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
-  end
-
-  def ipv6_prefixlength
-    ipv6addr.split('/')[1] if ipv6addr
-  end
 end

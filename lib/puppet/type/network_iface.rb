@@ -33,6 +33,15 @@ Puppet::Type.newtype(:network_iface) do
     end
   end
 
+  newproperty(:uuid) do
+    desc 'A unique ID for the interface.'
+
+    validate do |val|
+      # 0720bdf0-87bd-7885-f805-bbeef9d40ecb
+      raise Puppet::Error, _("error: invalid uuid (#{val})") unless val.match?(%r{^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$})
+    end
+  end
+
   newproperty(:conn_name) do
     desc 'User friendly name for the connection (NAME)'
   end

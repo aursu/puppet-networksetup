@@ -571,6 +571,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       'PREFIX'    => 'prefix',
       'SLAVE'     => 'slave',
       'TYPE'      => 'conn_type',
+      'UUID'      => 'uuid',
     }
 
     return {} unless ifcfg && File.exist?(ifcfg)
@@ -682,7 +683,8 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
      :onboot,
      :parent_device,
      :prefix,
-     :slave].each do |attr|
+     :slave,
+     :uuid].each do |attr|
       define_method(attr) do
         ifcfg_data[attr.to_s]
       end

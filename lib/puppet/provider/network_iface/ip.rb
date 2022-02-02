@@ -120,6 +120,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_slave     = @resource[:slave]     || slave
     ifcfg_master    = @resource[:master]    || master
     ifcfg_nm_controlled = @resource[:nm_controlled] || nm_controlled
+    ifcfg_uuid      = @resource[:uuid]      || uuid
 
     res_ipv6addr = @resource[:ipv6addr]
     res_prefixlength = @resource[:ipv6_prefixlength]
@@ -136,6 +137,9 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_ipv6addr = res_ipv6addr || ipv6addr
 
     ERB.new(<<-EOF, nil, '<>').result(binding)
+<% if ifcfg_uuid %>
+UUID=<%= ifcfg_uuid %>
+<% end %>
 <% if ifcfg_type %>
 TYPE=<%= ifcfg_type %>
 <% end %>
