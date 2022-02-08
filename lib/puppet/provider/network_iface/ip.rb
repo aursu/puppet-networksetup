@@ -212,15 +212,17 @@ EOF
   def create
     name       = @resource[:name]
     kind       = @resource[:link_kind]
-    ifcfg_type = @resource[:conn_type] || conn_type
-    nocreate   = @resource[:nocreate]
 
     case kind
     when :veth
       peer = @resource[:peer_name]
       # ip link add o-hm0 type veth peer name o-bhm0
-      self.class.link_create(name, 'type', 'veth', 'peer', 'name', peer)
+      # ip link add <name> type <link_kind> peer name <peer_name>
+      return self.class.link_create(name, 'type', 'veth', 'peer', 'name', peer)
     end
+
+    ifcfg_type = @resource[:conn_type] || conn_type
+    nocreate   = @resource[:nocreate]
 
     ifcfg = config_path_new
     return if nocreate && !File.exist?(ifcfg)
@@ -244,7 +246,16 @@ EOF
   end
 
   def peer_name=(peer)
-    @property_flush[:peer_name] = peer
+    kind = @resource[:link_kind]
+
+    case kind
+    when :veth
+      # remove current device and create new with updated peer
+      destroy
+      create
+    else
+      @property_flush[:peer_name] = peer
+    end
   end
 
   def bridge
@@ -262,14 +273,24 @@ EOF
   end
 
   def exists?
+    kind     = @resource[:link_kind]
     nocreate = @resource[:nocreate]
+
+    # VETH Type Support - no config
+    case kind
+    when :veth
+      return true if linkinfo_show['ifname']
+    end
+
     ifcfg = config_path
-
-    return true if nocreate && !ifcfg
-
     # no ifname - no  device
-    # we want to have both device and its ifcfg script
-    linkinfo_show['ifname'].is_a?(String) && ifcfg
+    if linkinfo_show['ifname'].is_a?(String)
+      # we want to have both device and its ifcfg script
+      return true if ifcfg
+      return true if nocreate
+    end
+
+    false
   end
 
   def flush
