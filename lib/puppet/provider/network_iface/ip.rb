@@ -266,6 +266,17 @@ EOF
     end
   end
 
+  def bridge=(link)
+    kind = @resource[:link_kind]
+
+    case kind
+    when :veth
+      self.class.link_set(name, 'master', link)
+    else
+      @property_flush[:bridge] = link
+    end
+  end
+
   def destroy
     name = @resource[:name]
 
