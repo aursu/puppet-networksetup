@@ -113,7 +113,7 @@ Puppet::Type.newtype(:network_iface) do
     end
 
     munge do |val|
-      return [] if val.to_s == 'absent'
+      return nil if val.to_s == 'absent'
       super(val)
     end
   end

@@ -254,3 +254,13 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.5.3
+
+**Features**
+
+**Bugfixes**
+
+* Bugfix for network_iface::dns value munge
+
+**Known Issues**
