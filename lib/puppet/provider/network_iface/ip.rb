@@ -116,11 +116,11 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_gateway   = @resource[:gateway]   || gateway
     ifcfg_hwaddr    = @resource[:hwaddr]    || hwaddr
     ifcfg_dns       = @resource[:dns]       || dns
-    ifcfg_dns       = [ifcfg_dns].flatten if ifcfg_dns
+    ifcfg_dns       = [ifcfg_dns].flatten.compact if ifcfg_dns
     ifcfg_slave     = @resource[:slave]     || slave
     ifcfg_master    = @resource[:master]    || master
-    ifcfg_nm_controlled = @resource[:nm_controlled] || nm_controlled
     ifcfg_uuid      = @resource[:uuid]      || uuid
+    ifcfg_nm_controlled = @resource[:nm_controlled] || nm_controlled
 
     res_ipv6addr = @resource[:ipv6addr]
     res_prefixlength = @resource[:ipv6_prefixlength]
