@@ -8,8 +8,7 @@ class networksetup::install (
   Boolean $manage_initscripts  = true,
   Boolean $manage_bridge_utils = true,
   Boolean $manage_iproute      = true,
-)
-{
+) {
   if $facts['os']['family'] == 'RedHat' {
     case $facts['os']['release']['major'] {
       '7': {
