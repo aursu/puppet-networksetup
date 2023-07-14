@@ -32,15 +32,12 @@
 # @example
 #   include networksetup::sysconfig
 class networksetup::sysconfig (
-  Boolean $nozeroconf       = true,
-  Boolean $ipv6_autoconf    = false,
-  Optional[String]
-          $ipv6_defaultgw   = undef,
-  Optional[Stdlib::Fqdn]
-          $hostname         = undef,
+  Boolean $nozeroconf = true,
+  Boolean $ipv6_autoconf = false,
+  Optional[String] $ipv6_defaultgw = undef,
+  Optional[Stdlib::Fqdn] $hostname = undef,
   Boolean $puppet_propagate = false,
-)
-{
+) {
   $networking = true
   $network_hostname = $hostname
 
