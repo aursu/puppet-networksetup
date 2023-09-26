@@ -11,8 +11,7 @@ describe 'networksetup::sysconfig' do
 
       context 'when default parameters' do
         let(:params) do
-          {
-          }
+          {}
         end
 
         it {

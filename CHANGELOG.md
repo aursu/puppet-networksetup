@@ -264,3 +264,13 @@ All notable changes to this project will be documented in this file.
 * Bugfix for network_iface::dns value munge
 
 **Known Issues**
+
+## Release 1.6.0
+
+**Features**
+
+* PDK upgrade to 3.0.0
+
+**Bugfixes**
+
+**Known Issues**

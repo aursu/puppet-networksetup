@@ -8,10 +8,9 @@ class networksetup::service (
   Variant[
     Enum['stopped', 'running'],
     Boolean
-  ]       $ensure = 'running',
+  ] $ensure = 'running',
   Boolean $enable = true,
-)
-{
+) {
   service { 'network':
     ensure => $ensure,
     enable => $enable,

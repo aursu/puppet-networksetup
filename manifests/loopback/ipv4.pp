@@ -15,14 +15,10 @@
 # @example
 #   networksetup::loopback::ipv4 { 'alias1': }
 define networksetup::loopback::ipv4 (
-  Stdlib::IP::Address::V4
-          $addr,
-  Optional[Stdlib::IP::Address::V4]
-          $netmask = undef,
-  Optional[Integer]
-          $prefix  = undef,
-)
-{
+  Stdlib::IP::Address::V4 $addr,
+  Optional[Stdlib::IP::Address::V4] $netmask = undef,
+  Optional[Integer] $prefix  = undef,
+) {
   include networksetup::loopback
 
   $addrinfo = split($addr, '/')

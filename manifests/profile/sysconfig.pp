@@ -10,6 +10,6 @@ class networksetup::profile::sysconfig {
   include networksetup::service
 
   Class['networksetup::install']
-    -> Class['networksetup::sysconfig']
-    ~> Class['networksetup::service']
+  -> Class['networksetup::sysconfig']
+  ~> Class['networksetup::service']
 }

@@ -5,10 +5,8 @@
 # @example
 #   include networksetup::loopback
 class networksetup::loopback (
-  Array[Stdlib::IP::Address::V6]
-        $ipv6addr_secondaries = [],
-)
-{
+  Array[Stdlib::IP::Address::V6] $ipv6addr_secondaries = [],
+) {
   $ipv6init = $ipv6addr_secondaries[0] ? {
     String  => true,
     default => undef,

@@ -12,14 +12,10 @@
 # @example
 #   networksetup::loopback::ipv6 { 'alias6': }
 define networksetup::loopback::ipv6 (
-  Stdlib::IP::Address::V6
-          $addr,
-  Optional[Integer]
-          $prefixlength     = undef,
-  Array[Stdlib::IP::Address::V6]
-          $addr_secondaries = [],
-)
-{
+  Stdlib::IP::Address::V6 $addr,
+  Optional[Integer] $prefixlength = undef,
+  Array[Stdlib::IP::Address::V6] $addr_secondaries = [],
+) {
   include networksetup::loopback
 
   $addrinfo = split($addr, '/')

@@ -27,6 +27,7 @@ module PuppetX
       end
     end
 
+    #
     class IPProperty < Puppet::Property
       validate do |value|
         raise Puppet::ParseError, _("Wrong IP address \"#{value}\" for #{name}") unless provider.validate_ip(value)
