@@ -274,3 +274,15 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 **Known Issues**
+
+## Release 1.7.0
+
+**Features**
+
+* Added support for Rocky Linux 9
+
+**Bugfixes**
+
+* Bugfix for `Tried to load unspecified class: Puppet::Util::Execution::ProcessOutput); replacing`
+
+**Known Issues**

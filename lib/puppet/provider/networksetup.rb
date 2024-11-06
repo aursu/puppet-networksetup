@@ -18,7 +18,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     cmdargs = Shellwords.join(args)
     cmdline = [cmd, cmdargs].compact.join(' ') if cmd
 
-    cmdout = Puppet::Util::Execution.execute(cmdline) if cmdline
+    cmdout = Puppet::Util::Execution.execute(cmdline).to_s if cmdline
     return nil if cmdout.nil?
     return nil if cmdout.empty?
     cmdout

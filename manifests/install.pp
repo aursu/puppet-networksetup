@@ -20,12 +20,11 @@ class networksetup::install (
           package { 'bridge-utils': }
         }
       }
-      '8': {
+      default: {
         if $manage_initscripts {
           package { 'network-scripts': }
         }
       }
-      default: {}
     }
     if $manage_iproute {
       package { 'iproute': }
