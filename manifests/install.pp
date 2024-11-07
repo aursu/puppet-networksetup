@@ -20,11 +20,16 @@ class networksetup::install (
           package { 'bridge-utils': }
         }
       }
-      default: {
+      '8': {
         if $manage_initscripts {
           package { 'network-scripts': }
         }
       }
+      '9': {
+        # https://www.redhat.com/en/blog/rhel-9-networking-say-goodbye-ifcfg-files-and-hello-keyfiles
+        package { 'NetworkManager-initscripts-updown': }
+      }
+      default: {}
     }
     if $manage_iproute {
       package { 'iproute': }
