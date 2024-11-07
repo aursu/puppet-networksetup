@@ -275,11 +275,12 @@ All notable changes to this project will be documented in this file.
 
 **Known Issues**
 
-## Release 1.7.1
+## Release 1.7.2
 
 **Features**
 
-* Added support for Rocky Linux 9 (workaround)
+* Added workaround for Rocky Linux 9
+* Added `params` and `globals` for flags
 
 **Bugfixes**
 
