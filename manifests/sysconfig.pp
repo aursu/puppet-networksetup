@@ -37,7 +37,7 @@ class networksetup::sysconfig (
   Optional[String] $ipv6_defaultgw = undef,
   Optional[Stdlib::Fqdn] $hostname = undef,
   Boolean $puppet_propagate = false,
-) {
+)  inherits networksetup::globals {
   $networking = true
   $network_hostname = $hostname
 
@@ -59,11 +59,13 @@ class networksetup::sysconfig (
     }
   }
 
-  file { '/etc/sysconfig/network':
-    ensure  => file,
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0640',
-    content => template('networksetup/network.erb'),
+  if $networksetup::globals::manage_initscripts {
+    file { '/etc/sysconfig/network':
+      ensure  => file,
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0640',
+      content => template('networksetup/network.erb'),
+    }
   }
 }

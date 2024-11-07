@@ -9,6 +9,15 @@ describe 'networksetup::sysconfig' do
 
       it { is_expected.to compile }
 
+      if os.match(%r{^rocky-9})
+        it {
+          is_expected.not_to contain_file('/etc/sysconfig/network')
+        }
+
+        # skip all other tests
+        next
+      end
+
       context 'when default parameters' do
         let(:params) do
           {}
