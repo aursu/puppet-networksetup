@@ -115,6 +115,49 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     @property_flush[:device] = value
   end
 
+  def self.route_config_file(dev)
+    "/etc/sysconfig/network-scripts/route-#{dev}"
+  end
+
+  def self.write_route_config(dev, dst, gateway = nil)
+    return unless dev && !dev.empty?
+
+    config_file = route_config_file(dev)
+
+    # Создаем файл, если его нет
+    unless File.exist?(config_file)
+      Puppet.debug "Creating route config file: #{config_file}"
+      File.open(config_file, 'w') { |f| f.write("# Created by Puppet\n") }
+    end
+
+    # Проверяем, есть ли уже такая запись
+    existing_routes = File.readlines(config_file).map(&:strip)
+    new_route = gateway ? "#{dst} via #{gateway}" : "#{dst}"
+
+    return if existing_routes.include?(new_route) # Избегаем дубликатов
+
+    Puppet.debug "Adding route to #{config_file}: #{new_route}"
+    File.open(config_file, 'a') { |f| f.puts(new_route) }
+  end
+
+  def self.remove_route_from_config(dev, dst)
+    return unless dev && !dev.empty?
+
+    config_file = route_config_file(dev)
+    return unless File.exist?(config_file)
+
+    Puppet.debug "Removing route #{dst} from #{config_file}"
+
+    new_content = File.readlines(config_file).reject { |line| line.strip.start_with?(dst) }
+
+    if new_content.empty?
+      Puppet.debug "No more routes left, deleting #{config_file}"
+      File.delete(config_file)
+    else
+      File.open(config_file, 'w') { |f| f.write(new_content.join("\n")) }
+    end
+  end
+
   def destroy
     return if route_lookup.empty?
 
@@ -124,17 +167,19 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
 
     Puppet.debug "Deleting route: dst=#{dst}, dev=#{dev}, gateway=#{gateway}"
     self.class.route_delete(dst, dev, gateway)
+    self.class.remove_route_from_config(dev, dst) # Удаляем из конфига
   end
 
   def create
     dst = resource[:destination]
     dev = resource[:device] || self.class.get_device_by_network(resource[:lookup_network])&.first
     gateway = resource[:gateway]
+    nocreate = resource[:nocreate]
 
     Puppet.debug "Creating route: dst=#{dst}, dev=#{dev}, gateway=#{gateway}"
     self.class.route_create(dst, dev, gateway)
+    self.class.write_route_config(dev, dst, gateway) unless nocreate
   end
-
 
   def flush
     return if @property_flush.empty?  # Если нечего менять, просто выходим
@@ -142,6 +187,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     dst = resource[:destination]
     dev = @property_flush[:device] || resource[:device] || self.class.get_device_by_network(resource[:lookup_network])&.first
     gateway = @property_flush[:gateway] || resource[:gateway]
+    nocreate = resource[:nocreate]
 
     Puppet.debug "Flushing route changes: dst=#{dst}, dev=#{dev}, gateway=#{gateway}"
 
@@ -149,11 +195,12 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
       old_dev = @property_hash[:device]
       old_gateway = @property_hash[:gateway]
       self.class.route_delete(dst, old_dev, old_gateway)
+      self.class.remove_route_from_config(old_dev, dst) # Удаляем старую запись
     end
 
     self.class.route_create(dst, dev, gateway)
+    self.class.write_route_config(dev, dst, gateway) unless nocreate
 
-    # Сбрасываем @property_flush, обновляем @property_hash
     @property_hash.merge!(@property_flush)
     @property_flush.clear
   end
