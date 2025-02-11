@@ -14,17 +14,19 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
   def self.system_caller(bin, *args)
     cmd = Puppet::Util.which(bin)
+    return nil unless cmd  # Если команда не найдена, возвращаем nil
 
     cmdargs = Shellwords.join(args)
-    cmdline = [cmd, cmdargs].compact.join(' ') if cmd
+    cmdline = [cmd, cmdargs].compact.join(' ')
 
-    cmdout = Puppet::Util::Execution.execute(cmdline).to_s if cmdline
-    return nil if cmdout.nil?
-    return nil if cmdout.empty?
-    cmdout
-  rescue Puppet::ExecutionFailure => detail
-    Puppet.debug "Execution of $(#{cmdline}) command failed: #{detail}"
-    false
+    begin
+      cmdout = Puppet::Util::Execution.execute(cmdline).to_s
+      return nil if cmdout.nil? || cmdout.empty?
+      cmdout
+    rescue Puppet::ExecutionFailure => detail
+      Puppet.debug "Execution of '#{cmdline}' command failed: #{detail}"
+      false
+    end
   end
 
   def self.link_create(*args)
@@ -444,10 +446,91 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     addrinfo_parse(cmdout)
   end
 
-  # return address infor for address in parameter or empty hash
+  #
+  # return Array of Hashes with addresses from `ip addr` command output in
+  # parameter or empty array
+  def self.routeinfo_parse(cmdout)
+    return [] if cmdout.nil? || cmdout.empty?
+
+    begin
+      JSON.parse(cmdout)
+    rescue JSON::ParserError => e
+      Puppet.debug "Failed to parse JSON from command output: #{e.message}"
+      []
+    end
+  end
+
+  def self.route_list
+    ip_caller('-details', '-j', 'route', 'list')
+  end
+
+  def self.route_delete(dst, dev = nil, gateway = nil)
+    raise Puppet::Error, "Destination is required for route deletion" if dst.nil? || dst.empty?
+
+    args = ['route', 'del', dst]
+    args += ['dev', dev] unless dev.nil? || dev.empty?
+    args += ['via', gateway] unless gateway.nil? || gateway.empty?
+
+    Puppet.debug "Executing: ip #{args.join(' ')}"
+    ip_caller(*args)
+  end
+
+  def self.route_create(dst, dev = nil, gateway = nil)
+    raise Puppet::Error, "Destination is required for route creation" if dst.nil? || dst.empty?
+
+    args = ['route', 'add', dst]
+    args += ['dev', dev] unless dev.nil? || dev.empty?
+    args += ['via', gateway] unless gateway.nil? || gateway.empty?
+
+    Puppet.debug "Executing: ip #{args.join(' ')}"
+    ip_caller(*args)
+  end
+
+
+  # return Array of Hashes with routing information
+  def self.routeinfo_show
+    routeinfo_parse(route_list)
+  end
+
+  # return address info for address in parameter or empty hash
   def self.addr_lookup(addr)
+    return {} if addr.nil? || addr.empty?
+
     addrinfo = addrinfo_parse(addr_list).select { |info| info['local'] == addr }
+
     addrinfo[0] || {}
+  end
+
+  # Finds all IP addresses that belong to a specified network.
+  #
+  # This method retrieves a list of all IP addresses on the system
+  # and returns an array of hashes containing information about those
+  # that are part of the given network.
+  #
+  # @param addr [String] The network in CIDR format (e.g., "192.168.1.0/24" or "2001:db8::/64").
+  # @return [Array<Hash>] An array of hashes containing information about the matching IP addresses.
+  #
+  # Example usage:
+  #   addr_lookup_net("192.168.1.0/24")
+  #   => [
+  #        {
+  #          "ifa_index" => "2",
+  #          "ifname" => "eth0",
+  #          "ifa_family" => "inet",
+  #          "local" => "192.168.1.100",
+  #          "prefixlen" => "24",
+  #          "scope" => "global",
+  #          "dynamic" => "on",
+  #          "valid_lft" => "12345",
+  #          "preferred_lft" => "56789"
+  #        }
+  #      ]
+  def self.addr_lookup_net(addr)
+    return [] if addr.nil? || addr.empty?
+
+    network = IPAddr.new(addr) # Create an IPAddr object for the network
+
+    addrinfo_parse(addr_list).select { |info| network.include?(IPAddr.new(info['local'])) }
   end
 
   # return String (hardware address) or nil
@@ -656,6 +739,33 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
     ifname = linkinfo['ifname'] if linkinfo && linkinfo['ifname']
     ifname
+  end
+
+  # Finds network interfaces that have IP addresses belonging to the specified network.
+  #
+  # This method retrieves all IP addresses from the system and returns a list of
+  # unique network interfaces (`ifname`) that have addresses within the given CIDR network.
+  #
+  # @param ref [String] The network in CIDR format (e.g., "192.168.1.0/24" or "2001:db8::/64").
+  # @return [Array<String>] An array of unique interface names (`ifname`) that have IPs in the specified network.
+  #
+  # Example usage:
+  #   get_device_by_network("192.168.1.0/24")
+  #   => ["eth0"]
+  #
+  #   get_device_by_network("2001:db8::/64")
+  #   => ["wlan0"]
+  #
+  #   get_device_by_network("10.0.0.0/24")
+  #   => []  # No interfaces found in this network
+  def self.get_device_by_network(addr)
+    devices = []
+
+    addr_lookup_net(addr).each do |info|
+      devices << info['ifname'] if info['ifname']
+    end
+
+    devices.uniq # Return unique interfaces
   end
 
   def self.mk_resource_methods
