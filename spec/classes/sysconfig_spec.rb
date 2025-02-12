@@ -9,7 +9,7 @@ describe 'networksetup::sysconfig' do
 
       it { is_expected.to compile }
 
-      if os.match(%r{^rocky-9})
+      if os.match?(%r{^rocky-9})
         it {
           is_expected.not_to contain_file('/etc/sysconfig/network')
         }

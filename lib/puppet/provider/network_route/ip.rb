@@ -18,7 +18,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     hash[:gateway] = info['gateway']
     hash[:device] = info['dev']
 
-    hash[:name] = hash[:destination] + (hash[:gateway] ? " via #{hash[:gateway]}" : "") + (hash[:device] ? " dev #{hash[:device]}" : "")
+    hash[:name] = hash[:destination] + (hash[:gateway] ? " via #{hash[:gateway]}" : '') + (hash[:device] ? " dev #{hash[:device]}" : '')
     hash[:provider] = name
 
     hash
@@ -31,9 +31,9 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     # list out all of the packages
     begin
       routeinfo_show.each do |routeinfo|
-          # now turn each returned line into a package object
-          hash = command_to_hash(routeinfo)
-          @instances << new(hash) unless hash.empty?
+        # now turn each returned line into a package object
+        hash = command_to_hash(routeinfo)
+        @instances << new(hash) unless hash.empty?
       end
     rescue Puppet::ExecutionFailure => e
       raise Puppet::Error, _("Failed to list routes #{e.message}"), e.backtrace
@@ -41,7 +41,6 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
 
     @instances
   end
-
 
   def self.prefetch(resources)
     # is there a better way to do this? Map network_route to the provider regardless of the title
@@ -134,7 +133,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
       existing_routes = []
     end
 
-    new_route = gateway ? "#{dst} via #{gateway}" : "#{dst}"
+    new_route = gateway ? "#{dst} via #{gateway}" : dst.to_s
     return if existing_routes.include?(new_route) # Избегаем дубликатов
 
     Puppet.debug "Adding route to #{config_file}: #{new_route}"
@@ -183,7 +182,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def flush
-    return if @property_flush.empty?  # Если нечего менять, просто выходим
+    return if @property_flush.empty? # Если нечего менять, просто выходим
 
     dst = resource[:destination]
     dev = @property_flush[:device] || resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first

@@ -10,7 +10,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
   def self.system_caller(bin, *args)
     cmd = Puppet::Util.which(bin)
-    return nil unless cmd  # Если команда не найдена, возвращаем nil
+    return nil unless cmd # Если команда не найдена, возвращаем nil
 
     cmdargs = args.compact.reject(&:empty?).map(&:to_s) # Убираем nil и пустые строки
     cmdline = cmdargs.empty? ? cmd : "#{cmd} #{Shellwords.join(cmdargs)}" # Если аргументов нет, просто вызываем `cmd`
@@ -466,7 +466,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.route_delete(dst, dev = nil, gateway = nil)
-    raise Puppet::Error, "Destination is required for route deletion" if dst.nil? || dst.empty?
+    raise Puppet::Error, 'Destination is required for route deletion' if dst.nil? || dst.empty?
 
     args = ['route', 'del', dst]
     args += ['dev', dev] unless dev.nil? || dev.empty?
@@ -477,7 +477,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   end
 
   def self.route_create(dst, dev = nil, gateway = nil)
-    raise Puppet::Error, "Destination is required for route creation" if dst.nil? || dst.empty?
+    raise Puppet::Error, 'Destination is required for route creation' if dst.nil? || dst.empty?
 
     args = ['route', 'add', dst]
     args += ['dev', dev] unless dev.nil? || dev.empty?
@@ -486,7 +486,6 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     Puppet.debug "Executing: ip #{args.join(' ')}"
     ip_caller(*args)
   end
-
 
   # return Array of Hashes with routing information
   def self.routeinfo_show
