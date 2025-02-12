@@ -8,16 +8,12 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     command(:ip)
   end
 
-  def self.ip_caller(*args)
-    system_caller(ip_comm, *args)
-  end
-
   def self.system_caller(bin, *args)
     cmd = Puppet::Util.which(bin)
     return nil unless cmd  # Если команда не найдена, возвращаем nil
 
-    cmdargs = Shellwords.join(args)
-    cmdline = [cmd, cmdargs].compact.join(' ')
+    cmdargs = args.compact.reject(&:empty?).map(&:to_s) # Убираем nil и пустые строки
+    cmdline = cmdargs.empty? ? cmd : "#{cmd} #{Shellwords.join(cmdargs)}" # Если аргументов нет, просто вызываем `cmd`
 
     begin
       cmdout = Puppet::Util::Execution.execute(cmdline).to_s
@@ -25,8 +21,12 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       cmdout
     rescue Puppet::ExecutionFailure => detail
       Puppet.debug "Execution of '#{cmdline}' command failed: #{detail}"
-      false
+      nil
     end
+  end
+
+  def self.ip_caller(*args)
+    system_caller(ip_comm, *args)
   end
 
   def self.link_create(*args)
@@ -65,6 +65,10 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   # All addresses in the system
   def self.addr_list
     ip_caller('-details', '-o', 'addr', 'show')
+  end
+
+  def self.route_list
+    ip_caller('-details', '-j', 'route', 'list')
   end
 
   # parse ip -details -o link show command output
@@ -450,7 +454,8 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   # return Array of Hashes with addresses from `ip addr` command output in
   # parameter or empty array
   def self.routeinfo_parse(cmdout)
-    return [] if cmdout.nil? || cmdout.empty?
+    return [] unless cmdout.is_a?(String)
+    return [] if cmdout.empty?
 
     begin
       JSON.parse(cmdout)
@@ -458,10 +463,6 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       Puppet.debug "Failed to parse JSON from command output: #{e.message}"
       []
     end
-  end
-
-  def self.route_list
-    ip_caller('-details', '-j', 'route', 'list')
   end
 
   def self.route_delete(dst, dev = nil, gateway = nil)

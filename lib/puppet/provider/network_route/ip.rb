@@ -55,7 +55,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
         resources.each_value do |resource|
           next unless resource[:destination] == provider.destination
 
-          device = resource[:device] || get_device_by_network(resource[:lookup_network])&.first
+          device = resource[:device] || get_device_by_network(resource[:lookup_device])&.first
           next unless device == provider.device
 
           next if provider.gateway && resource[:gateway] != provider.gateway
@@ -81,7 +81,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
 
   def route_lookup
     dst = resource[:destination]
-    device = resource[:device] || self.class.get_device_by_network(resource[:lookup_network])&.first
+    device = resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = resource[:gateway]
 
     self.class.route_lookup(dst, device, gateway)
@@ -125,15 +125,16 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     config_file = route_config_file(dev)
 
     # Создаем файл, если его нет
-    unless File.exist?(config_file)
+    if File.exist?(config_file)
+      # Проверяем, есть ли уже такая запись
+      existing_routes = File.readlines(config_file).map(&:strip)
+    else
       Puppet.debug "Creating route config file: #{config_file}"
       File.open(config_file, 'w') { |f| f.write("# Created by Puppet\n") }
+      existing_routes = []
     end
 
-    # Проверяем, есть ли уже такая запись
-    existing_routes = File.readlines(config_file).map(&:strip)
     new_route = gateway ? "#{dst} via #{gateway}" : "#{dst}"
-
     return if existing_routes.include?(new_route) # Избегаем дубликатов
 
     Puppet.debug "Adding route to #{config_file}: #{new_route}"
@@ -162,7 +163,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     return if route_lookup.empty?
 
     dst = resource[:destination]
-    dev = resource[:device] || self.class.get_device_by_network(resource[:lookup_network])&.first
+    dev = resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = resource[:gateway]
 
     Puppet.debug "Deleting route: dst=#{dst}, dev=#{dev}, gateway=#{gateway}"
@@ -172,7 +173,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
 
   def create
     dst = resource[:destination]
-    dev = resource[:device] || self.class.get_device_by_network(resource[:lookup_network])&.first
+    dev = resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = resource[:gateway]
     nocreate = resource[:nocreate]
 
@@ -185,7 +186,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     return if @property_flush.empty?  # Если нечего менять, просто выходим
 
     dst = resource[:destination]
-    dev = @property_flush[:device] || resource[:device] || self.class.get_device_by_network(resource[:lookup_network])&.first
+    dev = @property_flush[:device] || resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = @property_flush[:gateway] || resource[:gateway]
     nocreate = resource[:nocreate]
 

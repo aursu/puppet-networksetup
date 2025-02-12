@@ -56,8 +56,8 @@ Puppet::Type.newtype(:network_route) do
 
   validate do
     unless self[:nocreate]
-      unless self[:device] || self[:lookup_network]
-        raise Puppet::Error, _("Either device or lookup_network must be specified to save network_route \"#{self[:name]}\" permanently")
+      unless self[:device] || self[:lookup_device]
+        raise Puppet::Error, _("Either device or lookup_device must be specified to save network_route \"#{self[:name]}\" permanently")
       end
     end
   end
