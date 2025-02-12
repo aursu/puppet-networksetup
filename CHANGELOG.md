@@ -287,3 +287,13 @@ All notable changes to this project will be documented in this file.
 * Bugfix for `Tried to load unspecified class: Puppet::Util::Execution::ProcessOutput); replacing`
 
 **Known Issues**
+
+## Release 1.8.0
+
+**Features**
+
+* Added ip route management
+
+**Bugfixes**
+
+**Known Issues**
