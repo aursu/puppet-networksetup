@@ -136,7 +136,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     end
     ifcfg_ipv6addr = res_ipv6addr || ipv6addr
 
-    ERB.new(<<-EOF, nil, '<>').result(binding)
+    ERB.new(<<-EOF, trim_mode: '<>').result(binding)
 <% if ifcfg_uuid %>
 UUID=<%= ifcfg_uuid %>
 <% end %>
