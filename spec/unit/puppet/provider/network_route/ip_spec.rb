@@ -157,4 +157,47 @@ describe Puppet::Type.type(:network_route).provider(:ip) do
       expect(resources['10.100.16.0/24'][:ensure]).to eq(:present)
     end
   end
+
+  describe '#prefetch 2' do
+    let(:resources) do
+      {
+        '10.104.65.128/25 (to 10.122.14.0/24)' => Puppet::Type.type(:network_route).new(
+          name: '10.104.65.128/25 (to 10.122.14.0/24)',
+          ensure: :present,
+          destination: '10.104.65.128/25',
+          lookup_device: '10.122.14.0/24',
+          provider: :ip,
+        )
+      }
+    end
+
+    let(:existing_provider) do
+      described_class.new(
+        name: '10.104.65.128/25 dev eth1',
+        ensure: :present,
+        destination: '10.104.65.128/25',
+        device: 'eth1',
+      )
+    end
+
+    before(:each) do
+      allow(described_class).to receive(:instances).and_return([existing_provider])
+      allow(described_class).to receive(:get_device_by_network).with('10.122.14.0/24').and_return(['eth1'])
+    end
+
+    it 'calls instances' do
+      expect(described_class).to receive(:instances).and_return([existing_provider])
+      described_class.prefetch(resources)
+    end
+
+    it 'assigns provider if resource exists' do
+      described_class.prefetch(resources)
+      expect(resources['10.104.65.128/25 (to 10.122.14.0/24)'].provider).to eq(existing_provider)
+    end
+
+    it 'sets ensure => :present for existing resources' do
+      described_class.prefetch(resources)
+      expect(resources['10.104.65.128/25 (to 10.122.14.0/24)'][:ensure]).to eq(:present)
+    end
+  end
 end

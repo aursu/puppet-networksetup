@@ -79,6 +79,9 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def route_lookup
+    # on prefetch stage resource is not set
+    return {} unless resource
+
     dst = resource[:destination]
     device = resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = resource[:gateway]
