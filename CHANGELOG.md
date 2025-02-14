@@ -288,12 +288,14 @@ All notable changes to this project will be documented in this file.
 
 **Known Issues**
 
-## Release 1.8.0
+## Release 1.8.1
 
 **Features**
 
 * Added ip route management
 
 **Bugfixes**
+
+* Added bugfix for route_lookup while prefetch
 
 **Known Issues**
