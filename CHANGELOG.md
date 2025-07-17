@@ -288,7 +288,7 @@ All notable changes to this project will be documented in this file.
 
 **Known Issues**
 
-## Release 1.8.1
+## Release 1.8.2
 
 **Features**
 
@@ -297,5 +297,6 @@ All notable changes to this project will be documented in this file.
 **Bugfixes**
 
 * Added bugfix for route_lookup while prefetch
+* Missed bridge-utils on EL9+
 
 **Known Issues**

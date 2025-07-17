@@ -16,6 +16,10 @@ class networksetup::install (
         if $manage_initscripts {
           package { $networksetup::params::initscripts: }
         }
+
+        if $manage_bridge_utils {
+          package { 'bridge-utils': }
+        }
       }
       '9': {
         file { '/etc/sysconfig/network-scripts':
@@ -28,10 +32,6 @@ class networksetup::install (
         }
       }
       default: {}
-    }
-
-    if $manage_bridge_utils {
-      package { 'bridge-utils': }
     }
 
     if $manage_iproute {
