@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 1.9.0
+
+**Features**
+
+* Added Rocky Linux 10 / RHEL 10 support
+* Created new nmcli providers for network_iface, network_alias, and network_route
+* NetworkManager-based configuration for systems without /etc/sysconfig/network-scripts
+* Automatic provider selection based on OS version (nmcli for version 10+, ip for older versions)
+* Updated manifests to handle NetworkManager-only systems
+* Removed hardcoded nm_controlled default to support nmcli provider
+
+**Bugfixes**
+
+* Fixed compatibility with Rocky Linux 10 where ifcfg files are not supported
+* Fixed loopback interface management on NetworkManager-only systems
+
+**Known Issues**
+
 ## Release 1.0.0
 
 **Features**

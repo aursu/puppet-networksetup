@@ -9,4 +9,5 @@ class networksetup::globals (
   Boolean $manage_bridge_utils = true,
   Boolean $manage_iproute = true,
   Boolean $manage_nm = true,
+  Boolean $nmcli_managed = $networksetup::params::nmcli_managed,
 ) inherits networksetup::params {}

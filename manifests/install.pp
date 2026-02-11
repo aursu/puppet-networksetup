@@ -31,7 +31,15 @@ class networksetup::install (
           package { 'NetworkManager-initscripts-updown': }
         }
       }
-      default: {}
+      default: {
+        # Rocky/RHEL 10+: pure NetworkManager, no ifcfg files
+        # Ensure NetworkManager is installed (should be by default)
+        if $manage_nm {
+          package { 'NetworkManager':
+            ensure => installed,
+          }
+        }
+      }
     }
 
     if $manage_iproute {

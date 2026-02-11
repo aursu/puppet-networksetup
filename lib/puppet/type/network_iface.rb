@@ -18,7 +18,7 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   newparam(:name, namevar: true) do
-    desc 'Interface name. To lookup ifcgf script inside /etc/sysconfig/network-scripts'
+    desc 'Interface name. Used to identify the network interface or NM connection'
 
     validate do |val|
       raise Puppet::Error, _("error: invalid interface name (#{val})") unless val.match?(%r{^[-0-9A-Za-z_]*$})
@@ -130,8 +130,6 @@ Puppet::Type.newtype(:network_iface) do
 
   newproperty(:nm_controlled, parent: PuppetX::NetworkSetup::SwitchProperty) do
     desc 'Tells NetworkManager if it should handle this interface or not (NM_CONTROLLED)'
-
-    defaultto 'no'
   end
 
   # https://access.redhat.com/solutions/3101041
