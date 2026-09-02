@@ -1,0 +1,82 @@
+<%- | Integer[2, 2]                                $version,
+      Optional[Enum['networkd', 'NetworkManager']] $renderer,
+      Hash[String[1], Hash[String[1], Hash]]       $devices,
+| -%>
+# THIS FILE IS MANAGED BY PUPPET
+# DO NOT ATTEMPT TO EDIT THIS FILE
+#
+# Rendered by the networksetup::netplan class. Any local change is overwritten
+# on the next agent run - change the Puppet data instead.
+network:
+  version: <%= $version %>
+<% if $renderer =~ NotUndef { -%>
+  renderer: <%= $renderer %>
+<% } -%>
+<% $devices.each |$section, $members| { -%>
+<% unless $members.empty { -%>
+  <%= $section %>:
+<% $members.each |$device, $conf| { -%>
+    <%= $device %>:
+<% if $conf['id'] =~ NotUndef { -%>
+      id: <%= $conf['id'] %>
+<% } -%>
+<% if $conf['link'] =~ NotUndef { -%>
+      link: <%= $conf['link'] %>
+<% } -%>
+<% if $conf['interfaces'] =~ NotUndef { -%>
+      interfaces:
+<% $conf['interfaces'].each |$member| { -%>
+        - <%= $member %>
+<% } -%>
+<% } -%>
+<% if $conf['dhcp4'] =~ NotUndef { -%>
+      dhcp4: <%= $conf['dhcp4'] %>
+<% } -%>
+<% if $conf['dhcp6'] =~ NotUndef { -%>
+      dhcp6: <%= $conf['dhcp6'] %>
+<% } -%>
+<% if $conf['mtu'] =~ NotUndef { -%>
+      mtu: <%= $conf['mtu'] %>
+<% } -%>
+<% if $conf['parameters'] =~ NotUndef { -%>
+      parameters:
+<% $conf['parameters'].each |$parameter, $value| { -%>
+        <%= $parameter %>: <%= $value %>
+<% } -%>
+<% } -%>
+<% if $conf['addresses'] =~ NotUndef { -%>
+      addresses:
+<% $conf['addresses'].each |$address| { -%>
+        - <%= $address %>
+<% } -%>
+<% } -%>
+<% if $conf['nameservers'] =~ NotUndef { -%>
+      nameservers:
+<% if $conf['nameservers']['search'] =~ NotUndef { -%>
+        search:
+<% $conf['nameservers']['search'].each |$domain| { -%>
+          - <%= $domain %>
+<% } -%>
+<% } -%>
+<% if $conf['nameservers']['addresses'] =~ NotUndef { -%>
+        addresses:
+<% $conf['nameservers']['addresses'].each |$resolver| { -%>
+          - <%= $resolver %>
+<% } -%>
+<% } -%>
+<% } -%>
+<% if $conf['routes'] =~ NotUndef { -%>
+      routes:
+<% $conf['routes'].each |$route| { -%>
+        - to: <%= $route['to'] %>
+<% if $route['via'] =~ NotUndef { -%>
+          via: <%= $route['via'] %>
+<% } -%>
+<% if $route['metric'] =~ NotUndef { -%>
+          metric: <%= $route['metric'] %>
+<% } -%>
+<% } -%>
+<% } -%>
+<% } -%>
+<% } -%>
+<% } -%>

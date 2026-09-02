@@ -14,6 +14,10 @@ describe 'networksetup::loopback::ipv4' do
     context "on #{os}" do
       let(:facts) { os_facts }
 
+      # The ifcfg based network_alias and network_iface types are RedHat
+      # only; Ubuntu support is declared for networksetup::netplan alone.
+      next if os.match?(%r{^ubuntu})
+
       it { is_expected.to compile }
 
       it {

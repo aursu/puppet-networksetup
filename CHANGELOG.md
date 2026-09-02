@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file.
 
 **Features**
 
+* Added `networksetup::netplan`, which renders a netplan configuration file
+  from Puppet data and hands the result to `netplan generate` and
+  `netplan apply` when it changes
+* Added the `Networksetup::Netplan::*` data types backing that class: ethernets,
+  bonds with their parameters, VLANs, addresses, nameservers and routes
+* Added Ubuntu 22.04 / 24.04 to the declared operating system support, for
+  `networksetup::netplan` only - every other class in the module remains
+  RedHat only
 * Added Rocky Linux 10 / RHEL 10 support
 * Created new nmcli providers for network_iface, network_alias, and network_route
 * NetworkManager-based configuration for systems without /etc/sysconfig/network-scripts
