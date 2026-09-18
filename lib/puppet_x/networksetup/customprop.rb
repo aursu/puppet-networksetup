@@ -1,7 +1,10 @@
 require 'puppet/property'
 
 #
-module PuppetX
+# Nested style is deliberate: this file is the only one that defines PuppetX,
+# and it is loaded first, so the compact form would reference a constant that
+# does not exist yet.
+module PuppetX # rubocop:disable Style/ClassAndModuleChildren
   module NetworkSetup
     # yes/no switch
     class SwitchProperty < Puppet::Property

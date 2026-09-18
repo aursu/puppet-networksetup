@@ -90,7 +90,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def ipv6addr_secondaries
-    ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
+    ifcfg_data['ipv6addr_secondaries']&.split&.map { |a| a.strip }
   end
 
   def ipv6_prefixlength

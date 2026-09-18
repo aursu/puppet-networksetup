@@ -540,7 +540,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       File.read("#{syspath}/address").upcase
     elsif File.exist?(syspath)
       desc = linkinfo_show(name)
-      desc['link-addr'].upcase if desc['link-addr']
+      desc['link-addr']&.upcase
     else
       nil
     end
@@ -695,7 +695,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   def self.get_config_by_name(name)
     config_all.each do |config|
       desc = parse_config(config)
-      return config if desc['conn_name'] && desc['conn_name'].casecmp?(name)
+      return config if desc['conn_name']&.casecmp?(name)
     end
     nil
   end
@@ -704,7 +704,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   def self.get_config_by_hwaddr(addr)
     config_all.each do |config|
       desc = parse_config(config)
-      return config if desc['hwaddr'] && desc['hwaddr'].casecmp?(addr)
+      return config if desc['hwaddr']&.casecmp?(addr)
     end
     nil
   end
@@ -734,7 +734,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
 
     linkinfo = {}
     link.each do |info|
-      linkinfo = info if info['link-addr'] && info['link-addr'].casecmp?(addr)
+      linkinfo = info if info['link-addr']&.casecmp?(addr)
     end
 
     ifname = linkinfo['ifname'] if linkinfo && linkinfo['ifname']

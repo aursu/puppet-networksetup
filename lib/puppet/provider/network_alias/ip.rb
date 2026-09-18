@@ -25,7 +25,7 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
   mk_resource_methods
 
   def ipv6addr_secondaries
-    ifcfg_data['ipv6addr_secondaries'].split.map { |a| a.strip } if ifcfg_data['ipv6addr_secondaries']
+    ifcfg_data['ipv6addr_secondaries']&.split&.map { |a| a.strip }
   end
 
   def ipv6_prefixlength
@@ -33,7 +33,7 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
   end
 
   def parent_device
-    device.split(':').first if device
+    device&.split(':')&.first
   end
 
   def ifcfg_content
