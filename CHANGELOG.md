@@ -14,17 +14,20 @@ All notable changes to this project will be documented in this file.
 * Added Ubuntu 22.04 / 24.04 to the declared operating system support, for
   `networksetup::netplan` only - every other class in the module remains
   RedHat only
-* Added Rocky Linux 10 / RHEL 10 support
-* Created new nmcli providers for network_iface, network_alias, and network_route
-* NetworkManager-based configuration for systems without /etc/sysconfig/network-scripts
-* Automatic provider selection based on OS version (nmcli for version 10+, ip for older versions)
-* Updated manifests to handle NetworkManager-only systems
-* Removed hardcoded nm_controlled default to support nmcli provider
+* Declared Rocky Linux 10 / RHEL 10 in the supported operating systems, and
+  taught `networksetup::params` and `networksetup::install` about a release
+  with no ifcfg files at all. The providers that manage such a release through
+  nmcli are not written yet, so on EL10 the module currently manages the
+  packages and services and nothing else
 
 **Bugfixes**
 
-* Fixed compatibility with Rocky Linux 10 where ifcfg files are not supported
-* Fixed loopback interface management on NetworkManager-only systems
+* `network_iface` writes `NM_CONTROLLED=no` again: the default had been dropped
+  from the type, which silently changed what every EL8 and EL9 node gets in its
+  ifcfg files
+* `network_alias` and `networksetup::sysconfig` specs test what they claim to:
+  one read a fixture under a name that no longer existed, the other checked
+  EL10 against the expectations for a release that has ifcfg files
 
 **Known Issues**
 
