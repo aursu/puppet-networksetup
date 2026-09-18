@@ -2,6 +2,19 @@
 #
 # service `network` management
 #
+# @param nm_ensure
+#   Desired state of the NetworkManager service.
+#
+# @param nm_enable
+#   Whether NetworkManager is started at boot.
+#
+# @param network_ensure
+#   Desired state of the legacy network service. Only managed on the releases
+#   that still have ifcfg network scripts.
+#
+# @param network_enable
+#   Whether the legacy network service is started at boot.
+#
 # @example
 #   include networksetup::service
 class networksetup::service (

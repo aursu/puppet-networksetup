@@ -2,6 +2,21 @@
 #
 # Install system tools to manage networking
 #
+# @param manage_initscripts
+#   Whether to install the package providing the ifcfg network scripts.
+#
+# @param manage_bridge_utils
+#   Whether to install bridge-utils, needed by the brctl provider on EL7 and
+#   EL8.
+#
+# @param manage_iproute
+#   Whether to install the iproute package, which provides the ip command every
+#   ip provider calls.
+#
+# @param manage_nm
+#   Whether to install NetworkManager: the initscripts compatibility package on
+#   EL9, NetworkManager itself on EL10 and newer.
+#
 # @example
 #   include networksetup::install
 class networksetup::install (

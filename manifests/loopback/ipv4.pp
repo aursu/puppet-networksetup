@@ -2,7 +2,7 @@
 #
 # Add additional IPv4 address to loopback interface
 #
-# @param ipaddr
+# @param addr
 #   IPv4 address for loopback interface. Could be specified in CIDR notation
 #   In such case CIDR prefix would be used if no prefix or netmask provided
 #

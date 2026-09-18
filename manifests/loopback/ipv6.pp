@@ -2,12 +2,17 @@
 #
 # Add additional IPv6 address to loopback interface
 #
-# @param ipaddr
+# @param addr
 #   IPv6 address for loopback interface. Could be specified in CIDR notation
-#   In such case CIDR prefix would be used if no prefix or netmask provided
+#   In such case CIDR prefix would be used if no prefixlength provided
 #
-# @param prefix
-#   IP address prefix to use (CIDR). But netmask has higher priority
+# @param prefixlength
+#   IPv6 address prefix length to use. Takes priority over a prefix carried in
+#   the addr parameter itself
+#
+# @param addr_secondaries
+#   Additional IPv6 addresses to put on the same alias
+#   (IPV6ADDR_SECONDARIES)
 #
 # @example
 #   networksetup::loopback::ipv6 { 'alias6': }

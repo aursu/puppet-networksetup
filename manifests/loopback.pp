@@ -2,6 +2,10 @@
 #
 # Setup loopback interface
 #
+# @param ipv6addr_secondaries
+#   Additional IPv6 addresses to put on the loopback interface
+#   (IPV6ADDR_SECONDARIES). A non-empty list also turns IPv6 on for it.
+#
 # @example
 #   include networksetup::loopback
 class networksetup::loopback (
