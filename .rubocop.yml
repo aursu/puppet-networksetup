@@ -3,6 +3,7 @@ require:
 - rubocop-performance
 - rubocop-rspec
 AllCops:
+  NewCops: enable
   DisplayCopNames: true
   TargetRubyVersion: '2.6'
   Include:
@@ -38,7 +39,7 @@ Style/BlockDelimiters:
   EnforcedStyle: braces_for_chaining
 Style/ClassAndModuleChildren:
   Description: Compact style reduces the required amount of indentation.
-  Enabled: false
+  EnforcedStyle: compact
 Style/EmptyElse:
   Description: Enforce against empty else clauses, but allow `nil` for clarity.
   EnforcedStyle: empty
@@ -527,6 +528,8 @@ Lint/DuplicateBranch:
   Enabled: false
 Lint/DuplicateMagicComment:
   Enabled: false
+Lint/DuplicateMatchPattern:
+  Enabled: false
 Lint/DuplicateRegexpCharacterClassElement:
   Enabled: false
 Lint/EmptyBlock:
@@ -643,6 +646,8 @@ Style/ComparableClamp:
   Enabled: false
 Style/ConcatArrayLiterals:
   Enabled: false
+Style/DataInheritance:
+  Enabled: false
 Style/DirEmpty:
   Enabled: false
 Style/DocumentDynamicEvalDefinition:
@@ -691,8 +696,6 @@ Style/NumberedParameters:
   Enabled: false
 Style/NumberedParametersLimit:
   Enabled: false
-Style/NumericLiterals:
-  Enabled: false
 Style/ObjectThen:
   Enabled: false
 Style/OpenStructUse:
@@ -713,11 +716,11 @@ Style/RedundantHeredocDelimiterQuotes:
   Enabled: false
 Style/RedundantInitialize:
   Enabled: false
+Style/RedundantLineContinuation:
+  Enabled: false
 Style/RedundantSelfAssignmentBranch:
   Enabled: false
 Style/RedundantStringEscape:
-  Enabled: false
-Style/SafeNavigation:
   Enabled: false
 Style/SelectByRegexp:
   Enabled: false

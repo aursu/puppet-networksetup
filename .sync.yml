@@ -1,0 +1,22 @@
+---
+# facterdb carries the OS factsets the unit tests compile against, and the
+# template's pin predates Rocky 10 by two major versions: rspec-puppet-facts 4
+# requires facterdb ~> 2.1, rocky-10 first appears in facterdb 4.2, and only
+# rspec-puppet-facts 6 widens the requirement to >= 3.1, < 5.0. Both are
+# raised together; neither moves on its own.
+Gemfile:
+  overrides:
+    - gem: 'facterdb'
+      version: '~> 4.5'
+    - gem: 'rspec-puppet-facts'
+      version: '~> 6.0'
+
+# PDK 3.x writes pdk.yaml into the module root on every run and it carries no
+# configuration of ours. `paths` is appended to the template's own list, so the
+# defaults are kept.
+.gitignore:
+  paths:
+    - '/pdk.yaml'
+    # the ip provider specs write real files through the real File API; these
+    # are what they leave behind, not fixtures (those live in files/samples)
+    - '/spec/fixtures/files/ifcfg-*'
