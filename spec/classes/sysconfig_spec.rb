@@ -9,9 +9,9 @@ describe 'networksetup::sysconfig' do
 
       it { is_expected.to compile }
 
-      # rocky-9 has no ifcfg support and Debian never had it, so in both
-      # cases manage_initscripts is false and no file is managed.
-      if os.match?(%r{^(rocky-9|ubuntu)})
+      # rocky-9 and rocky-10 have no ifcfg support and Debian never had it, so
+      # in all cases manage_initscripts is false and no file is managed.
+      if os.match?(%r{^(rocky-(9|10)|ubuntu)})
         it {
           is_expected.not_to contain_file('/etc/sysconfig/network')
         }

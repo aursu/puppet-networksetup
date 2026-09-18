@@ -177,7 +177,7 @@ EOL
   end
 
   describe 'test different network settings pass' do
-    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-lo:alias6') }
+    let(:ifcfg_content) { File.read(Dir.pwd + '/spec/fixtures/files/samples/ifcfg-lo_alias6') }
     let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-lo:alias6', 'w', 0o600) }
 
     let(:resource_name) { 'alias6' }

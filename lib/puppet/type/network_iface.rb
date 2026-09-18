@@ -130,6 +130,8 @@ Puppet::Type.newtype(:network_iface) do
 
   newproperty(:nm_controlled, parent: PuppetX::NetworkSetup::SwitchProperty) do
     desc 'Tells NetworkManager if it should handle this interface or not (NM_CONTROLLED)'
+
+    defaultto 'no'
   end
 
   # https://access.redhat.com/solutions/3101041
