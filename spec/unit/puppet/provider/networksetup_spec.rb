@@ -48,6 +48,35 @@ describe Puppet::Provider::NetworkSetup do # rubocop:disable RSpec/FilePath
     OUT
   end
 
+  # nmcli --terse --fields all --mode multiline connection show, on a host
+  # carrying two profiles named eth0: the active one generated under /run and
+  # an inactive one saved under /etc.
+  let(:colliding_names) do
+    <<~OUT
+      NAME:eth0
+      UUID:b0ab376a-2bbd-4d82-a430-3f673ad44c15
+      TYPE:802-3-ethernet
+      ACTIVE:yes
+      DEVICE:eth0
+      STATE:activated
+      FILENAME:/run/NetworkManager/system-connections/eth0.nmconnection
+      NAME:eth0
+      UUID:9300d121-6af9-4db1-aca7-408bf3844cea
+      TYPE:802-3-ethernet
+      ACTIVE:no
+      DEVICE:
+      STATE:
+      FILENAME:/etc/NetworkManager/system-connections/eth0.nmconnection
+      NAME:System eth1
+      UUID:9c92fad9-6ecb-3e6c-eb4d-8a47c6f50c04
+      TYPE:802-3-ethernet
+      ACTIVE:yes
+      DEVICE:eth1
+      STATE:activated
+      FILENAME:/etc/sysconfig/network-scripts/ifcfg-eth1
+    OUT
+  end
+
   describe '.nmcli_caller' do
     before(:each) do
       allow(described_class).to receive(:nmcli_comm).and_return('/usr/bin/nmcli')
@@ -139,6 +168,112 @@ describe Puppet::Provider::NetworkSetup do # rubocop:disable RSpec/FilePath
       allow(described_class).to receive(:nmcli_caller).and_return(nil)
 
       expect(described_class.nmcli_connection_list).to eq([])
+    end
+  end
+
+  describe '.nmcli_connection_lookup' do
+    before(:each) do
+      allow(described_class).to receive(:nmcli_caller).and_return(all_connections)
+    end
+
+    it 'finds a connection by its profile name' do
+      expect(described_class.nmcli_connection_lookup('cloud-init enp1s0')['DEVICE']).to eq('enp1s0')
+    end
+
+    it 'falls back to the device a connection is bound to' do
+      expect(described_class.nmcli_connection_lookup('eth0', 'enp1s0')['NAME']).to eq('cloud-init enp1s0')
+    end
+
+    it 'prefers the name over the device' do
+      expect(described_class.nmcli_connection_lookup('lo', 'enp1s0')['NAME']).to eq('lo')
+    end
+
+    context 'when two profiles carry the same name' do
+      before(:each) do
+        allow(described_class).to receive(:nmcli_caller).and_return(colliding_names)
+      end
+
+      it 'returns the active one' do
+        expect(described_class.nmcli_connection_lookup('eth0')['UUID'])
+          .to eq('b0ab376a-2bbd-4d82-a430-3f673ad44c15')
+      end
+
+      it 'finds by device only among the profiles that have one' do
+        expect(described_class.nmcli_connection_lookup('nosuch', 'eth1')['NAME']).to eq('System eth1')
+      end
+    end
+
+    it 'returns nil when neither matches' do
+      expect(described_class.nmcli_connection_lookup('eth0', 'eth0')).to be_nil
+    end
+
+    it 'does not look by device when none was given' do
+      expect(described_class.nmcli_connection_lookup('eth0')).to be_nil
+      expect(described_class.nmcli_connection_lookup('eth0', '')).to be_nil
+    end
+  end
+
+  describe '.nmcli_writer' do
+    before(:each) do
+      allow(described_class).to receive(:nmcli_comm).and_return('nmcli')
+      allow(Puppet::Util).to receive(:which).with('nmcli').and_return('/usr/bin/nmcli')
+    end
+
+    # `nmcli connection modify nmtest ipv4.gateway ''` clears the gateway,
+    # which is the only way to unset a property. The shared system_caller
+    # drops empty arguments, so writes cannot go through it.
+    it 'keeps an empty value, which is how a property is unset' do
+      expect(Puppet::Util::Execution).to receive(:execute)
+        .with("/usr/bin/nmcli connection modify nmtest ipv4.gateway ''")
+        .and_return('')
+
+      described_class.nmcli_writer('connection', 'modify', 'nmtest', 'ipv4.gateway', '')
+    end
+
+    # nmcli exits 2 on an unknown property and 10 on an unknown connection,
+    # while a successful modify prints nothing - so a swallowed failure would
+    # be indistinguishable from success.
+    it 'lets a failed command fail the run' do
+      allow(Puppet::Util::Execution).to receive(:execute)
+        .and_raise(Puppet::ExecutionFailure, "Error: unknown connection 'nosuchconn'.")
+
+      expect { described_class.nmcli_writer('connection', 'modify', 'nosuchconn', 'connection.zone', 'x') }
+        .to raise_error(Puppet::ExecutionFailure, %r{unknown connection})
+    end
+
+    it 'fails when nmcli is not installed' do
+      allow(Puppet::Util).to receive(:which).with('nmcli').and_return(nil)
+
+      expect { described_class.nmcli_writer('connection', 'show') }
+        .to raise_error(Puppet::Error, %r{nmcli command not found})
+    end
+  end
+
+  describe 'the writing helpers' do
+    it 'adds a connection' do
+      expect(described_class).to receive(:nmcli_writer)
+        .with('connection', 'add', 'type', 'loopback', 'con-name', 'lo')
+
+      described_class.nmcli_connection_add('type', 'loopback', 'con-name', 'lo')
+    end
+
+    it 'modifies a connection by id' do
+      expect(described_class).to receive(:nmcli_writer)
+        .with('connection', 'modify', 'lo', 'ipv4.addresses', '127.0.0.1/8')
+
+      described_class.nmcli_connection_modify('lo', 'ipv4.addresses', '127.0.0.1/8')
+    end
+
+    it 'deletes a connection by id' do
+      expect(described_class).to receive(:nmcli_writer).with('connection', 'delete', 'lo')
+
+      described_class.nmcli_connection_delete('lo')
+    end
+
+    it 'brings a connection up by id' do
+      expect(described_class).to receive(:nmcli_writer).with('connection', 'up', 'lo')
+
+      described_class.nmcli_connection_up('lo')
     end
   end
 

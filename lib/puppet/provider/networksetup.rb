@@ -81,8 +81,69 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     nmcli_parse_records(nmcli_caller('--terse', '--fields', 'all', '--mode', 'multiline', 'connection', 'show'))
   end
 
+  # conn_id is anything nmcli accepts as an identifier - a profile name, a UUID
+  # or a D-Bus path. Names are not unique, UUIDs are.
   def self.nmcli_connection_show(conn_id)
     nmcli_parse(nmcli_caller('--terse', '--fields', 'all', '--mode', 'multiline', 'connection', 'show', conn_id))
+  end
+
+  # Find a connection by profile name, then by the device it is bound to. A
+  # profile's name and its device are independent in NetworkManager - `lo` has
+  # both the same, `cloud-init enp1s0` does not - and the ip family addresses
+  # interfaces by device, so both have to resolve.
+  #
+  # A name identifies no more than one connection only by convention. A host
+  # can carry two profiles both called eth0, one active and one not, and this
+  # returns the active one: it is the profile the system is running on, and the
+  # only one a device lookup could find at all, since DEVICE is empty on every
+  # inactive profile. A provider that needs to know whether the profile it
+  # found is persistent or was generated at runtime has to read FILENAME -
+  # /run/NetworkManager holds the generated ones.
+  def self.nmcli_connection_lookup(name, device = nil)
+    connections = nmcli_connection_list
+
+    named = connections.select { |connection| connection['NAME'] == name }
+    conn = named.find { |connection| connection['ACTIVE'] == 'yes' } || named.first
+    return conn if conn
+    return nil if device.nil? || device.empty?
+
+    connections.find { |connection| connection['DEVICE'] == device }
+  end
+
+  # Writes do not go through system_caller, for two reasons measured against
+  # NetworkManager 1.56.0.
+  #
+  # An empty value is how a property is unset: `connection modify <id>
+  # ipv4.gateway ''` clears the gateway, exits 0 and prints nothing, and a
+  # following `connection show` returns the property empty. system_caller drops
+  # empty arguments before it builds the command line, so through it that call
+  # would reach nmcli as `... ipv4.gateway` with no value at all.
+  #
+  # And a failed write has to be seen. nmcli exits non-zero - 2 for an unknown
+  # property, 10 for an unknown connection - while a successful modify prints
+  # nothing, so system_caller's nil means both "it worked" and "it failed".
+  # Here the ExecutionFailure is left to propagate and fail the run.
+  def self.nmcli_writer(*args)
+    cmd = Puppet::Util.which(nmcli_comm)
+    raise Puppet::Error, _('nmcli command not found') unless cmd
+
+    Puppet::Util::Execution.execute("#{cmd} #{Shellwords.join(args.compact.map(&:to_s))}").to_s
+  end
+
+  def self.nmcli_connection_add(*args)
+    nmcli_writer('connection', 'add', *args)
+  end
+
+  def self.nmcli_connection_modify(conn_id, *args)
+    nmcli_writer('connection', 'modify', conn_id, *args)
+  end
+
+  def self.nmcli_connection_delete(conn_id)
+    nmcli_writer('connection', 'delete', conn_id)
+  end
+
+  def self.nmcli_connection_up(conn_id)
+    nmcli_writer('connection', 'up', conn_id)
   end
 
   def self.link_create(*args)
