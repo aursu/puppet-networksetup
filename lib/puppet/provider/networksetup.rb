@@ -29,6 +29,62 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     system_caller(ip_comm, *args)
   end
 
+  def self.nmcli_comm
+    command(:nmcli)
+  end
+
+  def self.nmcli_caller(*args)
+    system_caller(nmcli_comm, *args)
+  end
+
+  # Parse the output of `nmcli --terse --fields all --mode multiline connection
+  # show`, with or without a connection id. nmcli prints one property per line
+  # as name:value, and prints connections one after another with nothing
+  # between them - the field names simply start over - so a name that is
+  # already in the record being built begins the next record.
+  #
+  # Multiline mode escapes nothing: one field per line leaves no ambiguity to
+  # escape. Property names never contain a colon, so the first colon is the
+  # separator and the rest of the line is the value verbatim - `ipv6.addresses:::1/128`
+  # is a real line and it carries ::1/128, as is
+  # `TIMESTAMP-REAL:Thu 03 Sep 2026 01:29:26 PM EDT`.
+  def self.nmcli_parse_records(cmdout)
+    return [] if cmdout.nil? || cmdout.empty?
+
+    records = []
+    record = {}
+
+    cmdout.each_line do |line|
+      key, value = line.chomp.split(':', 2)
+
+      next if key.nil? || key.empty? || value.nil?
+
+      if record.key?(key)
+        records << record
+        record = {}
+      end
+
+      record[key] = value
+    end
+
+    records << record unless record.empty?
+    records
+  end
+
+  # One connection's properties. `connection show <id>` prints a single record,
+  # so this is nmcli_parse_records with the record taken out of the array.
+  def self.nmcli_parse(cmdout)
+    nmcli_parse_records(cmdout).first || {}
+  end
+
+  def self.nmcli_connection_list
+    nmcli_parse_records(nmcli_caller('--terse', '--fields', 'all', '--mode', 'multiline', 'connection', 'show'))
+  end
+
+  def self.nmcli_connection_show(conn_id)
+    nmcli_parse(nmcli_caller('--terse', '--fields', 'all', '--mode', 'multiline', 'connection', 'show', conn_id))
+  end
+
   def self.link_create(*args)
     ip_caller('link', 'add', *args)
   end
