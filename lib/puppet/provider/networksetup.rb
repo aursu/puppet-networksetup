@@ -975,6 +975,43 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     (switch_to_bool_str(value) == 'yes') ? 'no' : 'yes'
   end
 
+  # nmcli has a third vocabulary. `connection add type ethernet` produces a
+  # profile that reports `connection.type:802-3-ethernet`, measured on
+  # NetworkManager 1.56.0, so the word used to create a connection is not the
+  # word used to read one back.
+  #
+  # A conn_type with no NetworkManager equivalent raises instead of being
+  # passed through: nmcli would reject it anyway, and saying which value is
+  # the problem is more use than its error.
+  NMCLI_ADD_TYPE = {
+    'ethernet' => 'ethernet',
+    '802-3-ethernet' => 'ethernet',
+    'wireless' => 'wifi',
+    'infiniband' => 'infiniband',
+    'bridge' => 'bridge',
+    'bond' => 'bond',
+    'team' => 'team',
+    'vlan' => 'vlan',
+    'vrf' => 'vrf',
+    'vxlan' => 'vxlan',
+    'macvlan' => 'macvlan',
+    'ip-tunnel' => 'ip-tunnel',
+    'wireguard' => 'wireguard',
+    'loopback' => 'loopback',
+    'dummy' => 'dummy',
+    'tun' => 'tun',
+    'veth' => 'veth',
+  }.freeze
+
+  def self.nmcli_add_type(conn_type)
+    type = NMCLI_ADD_TYPE[conn_type.to_s.downcase]
+    return type if type
+
+    raise Puppet::Error,
+          _("conn_type \"#{conn_type}\" has no NetworkManager equivalent, so a profile cannot be created for it. " \
+            'Give a conn_type NetworkManager knows, such as Ethernet or Bridge.')
+  end
+
   def self.nm_type_to_conn_type(type)
     {
       '802-3-ethernet' => 'Ethernet',
@@ -1098,33 +1135,38 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     devices.uniq # Return unique interfaces
   end
 
+  # Every property the types hand to a provider. mk_resource_methods defines a
+  # getter and a setter for each, and a provider building a new profile needs
+  # to know which of a resource's attributes are properties at all.
+  MANAGED_PROPERTIES = [:arpcheck,
+                        :bootproto,
+                        :broadcast,
+                        :conn_name,
+                        :conn_type,
+                        :defroute,
+                        :device,
+                        :dns,
+                        :gateway,
+                        :hwaddr,
+                        :ipaddr,
+                        :ipv6addr,
+                        :ipv6init,
+                        :ipv6_defaultgw,
+                        :ipv6_defroute,
+                        :ipv6addr_secondaries,
+                        :ipv6_autoconf,
+                        :master,
+                        :netmask,
+                        :network,
+                        :nm_controlled,
+                        :onboot,
+                        :parent_device,
+                        :prefix,
+                        :slave,
+                        :uuid].freeze
+
   def self.mk_resource_methods
-    [:arpcheck,
-     :bootproto,
-     :broadcast,
-     :conn_name,
-     :conn_type,
-     :defroute,
-     :device,
-     :dns,
-     :gateway,
-     :hwaddr,
-     :ipaddr,
-     :ipv6addr,
-     :ipv6init,
-     :ipv6_defaultgw,
-     :ipv6_defroute,
-     :ipv6addr_secondaries,
-     :ipv6_autoconf,
-     :master,
-     :netmask,
-     :network,
-     :nm_controlled,
-     :onboot,
-     :parent_device,
-     :prefix,
-     :slave,
-     :uuid].each do |attr|
+    MANAGED_PROPERTIES.each do |attr|
       define_method(attr) do
         ifcfg_data[attr.to_s]
       end

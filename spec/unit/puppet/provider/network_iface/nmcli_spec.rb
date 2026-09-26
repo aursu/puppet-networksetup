@@ -90,6 +90,89 @@ describe Puppet::Type.type(:network_iface).provider(:nmcli) do
     end
   end
 
+  describe '#create' do
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: 'eth0',
+        ensure: :present,
+        conn_name: 'System eth0',
+        device: 'eth0',
+        conn_type: 'Ethernet',
+        bootproto: 'static',
+        ipaddr: '216.251.35.10',
+        prefix: 24,
+        gateway: '216.251.35.1',
+        onboot: true,
+        provider: :nmcli,
+      )
+    end
+
+    let(:provider) { described_class.new(resource) }
+
+    # `connection add type ethernet` produces a profile reporting
+    # 802-3-ethernet: the word that creates a connection is not the word that
+    # reads one back.
+    it 'creates the profile with the type nmcli takes, and its properties' do
+      expect(described_class).to receive(:nmcli_connection_add).with(
+        'type', 'ethernet',
+        'con-name', 'System eth0',
+        'ifname', 'eth0',
+        'connection.autoconnect', 'yes',
+        'ipv4.method', 'manual',
+        'ipv4.addresses', '216.251.35.10/24',
+        'ipv4.gateway', '216.251.35.1'
+      )
+
+      provider.create
+    end
+
+    it 'refuses a conn_type NetworkManager has no equivalent for' do
+      expect { described_class.nmcli_add_type('Token Ring') }
+        .to raise_error(Puppet::Error, %r{conn_type "Token Ring" has no NetworkManager equivalent})
+    end
+  end
+
+  describe '#destroy' do
+    before(:each) do
+      allow(described_class).to receive(:nmcli_connection_lookup)
+        .and_return('NAME' => 'eth0', 'UUID' => 'b0ab376a', 'DEVICE' => 'eth0')
+      allow(described_class).to receive(:nmcli_connection_show)
+        .and_return('connection.id' => 'eth0', 'connection.uuid' => 'b0ab376a')
+    end
+
+    # The parent deletes the link and nothing else, which fails on a physical
+    # card and leaves the configuration behind on a virtual one. Absent means
+    # the configuration is gone.
+    it 'removes the profile and leaves a physical interface alone' do
+      resource = Puppet::Type.type(:network_iface).new(name: 'eth0', ensure: :absent, provider: :nmcli)
+
+      expect(described_class).to receive(:nmcli_connection_delete).with('b0ab376a')
+      expect(described_class).not_to receive(:link_delete)
+
+      described_class.new(resource).destroy
+    end
+
+    it 'also removes an interface the module created' do
+      resource = Puppet::Type.type(:network_iface).new(
+        name: 'o-hm0', ensure: :absent, link_kind: :veth, peer_name: 'o-bhm0', provider: :nmcli,
+      )
+
+      expect(described_class).to receive(:nmcli_connection_delete).with('b0ab376a')
+      expect(described_class).to receive(:link_delete).with('o-hm0')
+
+      described_class.new(resource).destroy
+    end
+
+    it 'says nothing to nmcli when there is no profile' do
+      allow(described_class).to receive(:nmcli_connection_lookup).and_return(nil)
+      resource = Puppet::Type.type(:network_iface).new(name: 'eth0', ensure: :absent, provider: :nmcli)
+
+      expect(described_class).not_to receive(:nmcli_connection_delete)
+
+      described_class.new(resource).destroy
+    end
+  end
+
   describe '#conn_type=' do
     let(:resource) do
       Puppet::Type.type(:network_iface).new(name: 'lo', ensure: :present, provider: :nmcli)

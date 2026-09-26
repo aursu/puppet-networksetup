@@ -62,6 +62,55 @@ Puppet::Type.type(:network_iface).provide(
   # veth stays with the parent. NetworkManager has no model for a pair of
   # interfaces created together, so those are made with ip and are real as soon
   # as the link is.
+  # The resource's own properties, which is what a profile is created from.
+  # A parameter the manifest did not give is not a value to write: nmcli
+  # leaves a property it is not told about at NetworkManager's default, which
+  # is what an undeclared property means.
+  # MANAGED_PROPERTIES is the union across the four types, so it is filtered by
+  # what this resource's own type has - asking a network_iface for arpcheck,
+  # which belongs to network_alias, raises rather than returning nil.
+  def declared_properties
+    self.class::MANAGED_PROPERTIES.each_with_object({}) do |attr, props|
+      next unless @resource.class.validattr?(attr)
+
+      value = @resource[attr]
+      next if value.nil?
+
+      props[attr.to_s] = value
+    end
+  end
+
+  def create
+    return super if @resource[:link_kind] == :veth
+
+    # con-name and ifname are how `connection add` says these two, so they are
+    # not repeated as connection.id and connection.interface-name.
+    rest = declared_properties.reject { |attr, _| ['conn_name', 'device'].include?(attr) }
+
+    self.class.nmcli_connection_add(
+      'type', self.class.nmcli_add_type(@resource[:conn_type]),
+      'con-name', @resource[:conn_name] || @resource[:name],
+      'ifname', @resource[:device] || interface_name || @resource[:name],
+      *self.class.nmcli_arguments(rest)
+    )
+  end
+
+  # absent means the configuration is gone, which is meaningful for every
+  # interface. The parent deletes the link and nothing else, so on a physical
+  # card it fails and on a virtual one it leaves the configuration behind.
+  #
+  # Here the profile always goes, and the interface itself only where the
+  # module made it - a declared link_kind says so. A physical card is left
+  # alone, and nothing has to know at compile time which kind it is, which a
+  # master could not tell anyway.
+  #
+  # Deleting the profile of an active connection takes the interface down with
+  # it. That is what was asked for, but it is worth knowing before asking.
+  def destroy
+    self.class.nmcli_connection_delete(connection['connection.uuid']) unless connection.empty?
+    self.class.link_delete(@resource[:name]) if @resource[:link_kind]
+  end
+
   # connection.type is fixed when a profile is created and NetworkManager will
   # not change it afterwards. A setter runs only where Puppet found the
   # declared value different from the current one, so reaching here means the
