@@ -61,9 +61,32 @@ Puppet::Type.newtype(:network_iface) do
   end
 
   newproperty(:bootproto) do
-    desc 'Method used for IPv4 protocol configuration (BOOTPROTO)'
+    desc 'Method used for IPv4 protocol configuration (BOOTPROTO, ipv4.method)'
 
-    newvalues('bootp', 'dhcp', 'static', 'none')
+    # The ifcfg words and NetworkManager's are two vocabularies for one
+    # setting, and NetworkManager's is the larger: disabled, link-local and
+    # shared have no BOOTPROTO to be. Both are accepted, and a provider writes
+    # whichever its own storage speaks - one that cannot express a value says
+    # so rather than writing something that will be ignored.
+    newvalues('bootp', 'dhcp', 'static', 'none',
+              'manual', 'auto', 'disabled', 'link-local', 'shared')
+
+    # Where the two vocabularies name the same state, a resource declaring one
+    # is satisfied by a system reporting the other. Without this, an interface
+    # whose profile says manual and whose manifest says static would be
+    # rewritten on every run, and neither value is wrong.
+    EQUIVALENT = {
+      'none' => 'manual',
+      'static' => 'manual',
+      'dhcp' => 'auto',
+      'bootp' => 'auto',
+    }.freeze
+
+    def insync?(is)
+      return true if super(is)
+
+      EQUIVALENT[should.to_s] == is.to_s
+    end
   end
 
   newproperty(:broadcast, parent: PuppetX::NetworkSetup::IPProperty) do
@@ -148,7 +171,10 @@ Puppet::Type.newtype(:network_iface) do
   # Hex representation of IPv4 in 2 octets divided by colon
   # return String or nil
   def addr_host_number(addr = nil)
-    host_number = provider.host_number(addr)
+    # A host with no suitable provider has no address to read either. Without
+    # the guard that arrives as a NoMethodError instead of the error the caller
+    # raises, which says what is actually wrong.
+    host_number = provider&.host_number(addr)
 
     # split hex representation of IPv4 address on 2 parts and join them with ":"
     (host_number[0, 4] + ':' + host_number[4, 4]) if host_number
@@ -174,7 +200,7 @@ Puppet::Type.newtype(:network_iface) do
         host_number = if self[:ipaddr]
                         addr_host_number(self[:ipaddr])
                       else
-                        addr_host_number(provider.ipaddr)
+                        addr_host_number(provider&.ipaddr)
                       end
 
         raise Puppet::Error, _(<<-EOT) unless host_number

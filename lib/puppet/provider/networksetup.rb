@@ -33,8 +33,15 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     command(:nmcli)
   end
 
+  # command(:nmcli) is nil where nmcli is not installed. On a node that cannot
+  # happen - the confine keeps the provider from being chosen at all - but it
+  # does happen wherever suitability was bypassed, and Puppet::Util.which(nil)
+  # raises a TypeError rather than saying anything useful.
   def self.nmcli_caller(*args)
-    system_caller(nmcli_comm, *args)
+    comm = nmcli_comm
+    return nil unless comm
+
+    system_caller(comm, *args)
   end
 
   # Parse the output of `nmcli --terse --fields all --mode multiline connection
@@ -799,6 +806,76 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     end
 
     desc
+  end
+
+  # The counterpart of parse_config: one connection's nmcli properties, named
+  # the way the types name them.
+  #
+  # Two differences from parse_config shape the rules below. nmcli prints
+  # *every* property of a profile, so a blank value means unset, where an ifcfg
+  # file simply has no such line. And NetworkManager keeps one fact once where
+  # ifcfg kept it twice - an address carries its prefix, and there is no
+  # netmask at all.
+  #
+  # Where the two notations are isomorphic the value is derived: a netmask is a
+  # prefix written differently, and reporting nil for it would leave a resource
+  # that declares one permanently out of sync, rewriting the profile on every
+  # run. Where the mapping loses meaning it stays nil instead: ipv4.method
+  # disabled, link-local and shared have no BOOTPROTO to be, and inventing one
+  # would be a lie rather than a translation.
+  def self.nmcli_properties(desc)
+    return {} if desc.nil? || desc.empty?
+
+    read = ->(key) { (desc[key].nil? || desc[key].empty?) ? nil : desc[key] }
+    invert = ->(key) { read.call(key) && ((read.call(key) == 'yes') ? 'no' : 'yes') }
+
+    addr, prefix = (read.call('ipv4.addresses') || '').split(',').first.to_s.split('/')
+    ipv6addr, *ipv6_secondaries = (read.call('ipv6.addresses') || '').split(',').map(&:strip)
+    ipv6addr, ipv6_prefixlength = ipv6addr.to_s.split('/')
+    ipv4_method = read.call('ipv4.method')
+    ipv6_method = read.call('ipv6.method')
+
+    {
+      'conn_name' => read.call('connection.id'),
+      'uuid' => read.call('connection.uuid'),
+      'device' => read.call('connection.interface-name'),
+      'conn_type' => nm_type_to_conn_type(read.call('connection.type')),
+      'onboot' => read.call('connection.autoconnect'),
+      # renamed in NetworkManager 1.5x: EL8 and EL9 say master, EL10 controller
+      'master' => read.call('connection.controller') || read.call('connection.master'),
+      'slave' => (read.call('connection.port-type') || read.call('connection.slave-type')) && 'yes',
+      # NetworkManager's own word, not a translation: manual and none name the
+      # same state but disabled names one BOOTPROTO cannot, and the type knows
+      # the two vocabularies are equivalent where they overlap.
+      'bootproto' => ipv4_method,
+      'ipaddr' => addr,
+      'prefix' => prefix,
+      'netmask' => prefix && IPAddr.new('255.255.255.255').mask(prefix.to_i).to_s,
+      'gateway' => read.call('ipv4.gateway'),
+      'dns' => read.call('ipv4.dns')&.split(',')&.map(&:strip),
+      'defroute' => invert.call('ipv4.never-default'),
+      'ipv6init' => ipv6_method && ((ipv6_method == 'ignore') ? 'no' : 'yes'),
+      'ipv6_autoconf' => ipv6_method && ((ipv6_method == 'auto') ? 'yes' : 'no'),
+      'ipv6addr' => ipv6addr,
+      'ipv6_prefixlength' => ipv6_prefixlength,
+      'ipv6addr_secondaries' => ipv6_secondaries.empty? ? nil : ipv6_secondaries.join(' '),
+      'ipv6_defaultgw' => read.call('ipv6.gateway'),
+      'ipv6_defroute' => invert.call('ipv6.never-default'),
+      'hwaddr' => read.call('802-3-ethernet.mac-address'),
+      # arpcheck, broadcast, network, nm_controlled and parent_device have no
+      # NetworkManager counterpart. Broadcast and network are derived by the
+      # kernel, and a profile is managed by NetworkManager by definition, so
+      # NM_CONTROLLED has nothing to say.
+    }.compact
+  end
+
+  def self.nm_type_to_conn_type(type)
+    {
+      '802-3-ethernet' => 'Ethernet',
+      'bridge' => 'Bridge',
+      'infiniband' => 'InfiniBand',
+      'vlan' => 'Vlan',
+    }.fetch(type, type)
   end
 
   # return Array of paths or empty array if there are no compatible paths

@@ -187,4 +187,39 @@ EOT
       ).to eq('fe80::dea6:32ff:0a64:1007/64')
     end
   end
+
+  # ifcfg and NetworkManager are two vocabularies for one setting. A resource
+  # written for ifcfg must stay in sync on a host whose profile reports the
+  # NetworkManager word, or it would be rewritten on every run with neither
+  # value being wrong.
+  describe 'bootproto across the two vocabularies' do
+    def bootproto(declared)
+      described_class.new(name: 'eth0', bootproto: declared).property(:bootproto)
+    end
+
+    it 'accepts manual as what none and static asked for' do
+      expect(bootproto('none')).to be_insync('manual')
+      expect(bootproto('static')).to be_insync('manual')
+    end
+
+    it 'accepts auto as what dhcp and bootp asked for' do
+      expect(bootproto('dhcp')).to be_insync('auto')
+      expect(bootproto('bootp')).to be_insync('auto')
+    end
+
+    it 'still matches a value against itself' do
+      expect(bootproto('manual')).to be_insync('manual')
+      expect(bootproto('disabled')).to be_insync('disabled')
+    end
+
+    it 'does not make unrelated methods equivalent' do
+      expect(bootproto('none')).not_to be_insync('auto')
+      expect(bootproto('dhcp')).not_to be_insync('disabled')
+    end
+
+    it 'accepts the values only NetworkManager has a word for' do
+      expect { described_class.new(name: 'eth0', bootproto: 'link-local') }.not_to raise_error
+      expect { described_class.new(name: 'eth0', bootproto: 'nosuch') }.to raise_error(Puppet::Error)
+    end
+  end
 end

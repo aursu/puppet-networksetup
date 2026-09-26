@@ -77,6 +77,108 @@ describe Puppet::Provider::NetworkSetup do # rubocop:disable RSpec/FilePath
     OUT
   end
 
+  # nmcli --terse --fields all --mode multiline connection show "System eth0"
+  # on an EL8 host: every property is printed, so a blank line means unset.
+  let(:eth0_profile) do
+    described_class.nmcli_parse(<<~OUT)
+      connection.id:System eth0
+      connection.uuid:5fb06bd0-0bb0-7ffb-45f1-d6edd65f3e03
+      connection.type:802-3-ethernet
+      connection.interface-name:eth0
+      connection.autoconnect:yes
+      connection.master:
+      connection.slave-type:
+      802-3-ethernet.mac-address:00:50:56:B9:1F:38
+      ipv4.method:manual
+      ipv4.dns:10.250.1.1,209.235.147.102,69.49.97.160
+      ipv4.addresses:216.251.35.10/24
+      ipv4.gateway:216.251.35.1
+      ipv4.never-default:no
+      ipv6.method:ignore
+      ipv6.addresses:
+      ipv6.gateway:
+      ipv6.never-default:no
+    OUT
+  end
+
+  describe '.nmcli_properties' do
+    subject(:props) { described_class.nmcli_properties(eth0_profile) }
+
+    it 'is empty for a profile that does not exist' do
+      expect(described_class.nmcli_properties({})).to eq({})
+      expect(described_class.nmcli_properties(nil)).to eq({})
+    end
+
+    it 'names the connection the way the types do' do
+      expect(props['conn_name']).to eq('System eth0')
+      expect(props['uuid']).to eq('5fb06bd0-0bb0-7ffb-45f1-d6edd65f3e03')
+      expect(props['device']).to eq('eth0')
+      expect(props['conn_type']).to eq('Ethernet')
+      expect(props['onboot']).to eq('yes')
+    end
+
+    it 'splits an address into the three properties ifcfg kept separately' do
+      expect(props['ipaddr']).to eq('216.251.35.10')
+      expect(props['prefix']).to eq('24')
+      expect(props['netmask']).to eq('255.255.255.0')
+    end
+
+    it 'takes DNS as a list, where ifcfg had one key per server' do
+      expect(props['dns']).to eq(['10.250.1.1', '209.235.147.102', '69.49.97.160'])
+    end
+
+    it 'inverts never-default into defroute' do
+      expect(props['defroute']).to eq('yes')
+      expect(props['ipv6_defroute']).to eq('yes')
+    end
+
+    it 'reads the IPv6 method as the two switches ifcfg used' do
+      expect(props['ipv6init']).to eq('no')
+      expect(props['ipv6_autoconf']).to eq('no')
+    end
+
+    # BOOTPROTO cannot say disabled, link-local or shared, so translating into
+    # it would either lose the state or invent one. The method is reported as
+    # NetworkManager states it, and the type knows the two vocabularies name
+    # the same thing where they overlap.
+    it 'reports the IPv4 method as NetworkManager states it' do
+      expect(props['bootproto']).to eq('manual')
+    end
+
+    it 'reports the methods BOOTPROTO has no word for' do
+      ['disabled', 'link-local', 'shared'].each do |method|
+        desc = described_class.nmcli_parse("ipv4.method:#{method}\n")
+        expect(described_class.nmcli_properties(desc)['bootproto']).to eq(method)
+      end
+    end
+
+    it 'drops the properties NetworkManager has no notion of' do
+      expect(props).not_to include('nm_controlled', 'arpcheck', 'broadcast', 'network')
+    end
+
+    it 'treats a blank property as unset, not as an empty value' do
+      expect(props).not_to include('master', 'slave', 'ipv6addr', 'ipv6_defaultgw')
+    end
+
+    it 'reads the controller under either of its two names' do
+      el10 = described_class.nmcli_parse("connection.id:port\nconnection.controller:br0\n")
+      el8 = described_class.nmcli_parse("connection.id:port\nconnection.master:br0\n")
+
+      expect(described_class.nmcli_properties(el10)['master']).to eq('br0')
+      expect(described_class.nmcli_properties(el8)['master']).to eq('br0')
+    end
+
+    it 'takes the first IPv6 address as the primary and the rest as secondaries' do
+      desc = described_class.nmcli_parse("ipv6.method:manual\nipv6.addresses:2001:db8::1/64, 2001:db8::2/64, 2001:db8::3/64\n")
+      props6 = described_class.nmcli_properties(desc)
+
+      expect(props6['ipv6addr']).to eq('2001:db8::1')
+      expect(props6['ipv6_prefixlength']).to eq('64')
+      expect(props6['ipv6addr_secondaries']).to eq('2001:db8::2/64 2001:db8::3/64')
+      expect(props6['ipv6init']).to eq('yes')
+    end
+  end
+
   describe '.nmcli_caller' do
     before(:each) do
       allow(described_class).to receive(:nmcli_comm).and_return('/usr/bin/nmcli')
