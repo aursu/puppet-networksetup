@@ -105,7 +105,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_broadcast = @resource[:broadcast] || broadcast
     ifcfg_onboot    = @resource[:onboot]    || onboot
     ifcfg_name      = @resource[:conn_name] || conn_name
-    ifcfg_type      = @resource[:conn_type] || conn_type
+    ifcfg_type      = self.class.ifcfg_conn_type(@resource[:conn_type] || conn_type)
     ifcfg_ipv6init  = @resource[:ipv6init]  || ipv6init
     ifcfg_prefix    = @resource[:prefix]    || prefix
     ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries

@@ -968,6 +968,12 @@ EOF
         .to raise_error(Puppet::Error, %r{bootproto "disabled" has no BOOTPROTO equivalent})
     end
 
+    it 'refuses a conn_type TYPE has no word for' do
+      expect { described_class.ifcfg_conn_type('loopback') }
+        .to raise_error(Puppet::Error, %r{conn_type "loopback" has no TYPE equivalent})
+      expect(described_class.ifcfg_conn_type('Ethernet')).to eq('Ethernet')
+    end
+
     it 'writes the ones it can express' do
       expect(described_class.ifcfg_bootproto('dhcp')).to eq('dhcp')
       expect(described_class.ifcfg_bootproto('none')).to eq('none')

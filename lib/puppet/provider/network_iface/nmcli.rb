@@ -51,4 +51,33 @@ Puppet::Type.type(:network_iface).provide(
   def ifcfg_data
     @addrinfo ||= self.class.nmcli_properties(connection)
   end
+
+  # For the parent this asks about two things at once - an interface exists and
+  # it has an ifcfg script - because ifcfg kept the configuration beside the
+  # device but not attached to it. NetworkManager has one object, the profile,
+  # and it can perfectly well exist for a device that is not present: a profile
+  # bound to a MAC waits for the card. That is not absent, it is inactive, and
+  # a provider that called it absent would recreate the profile on every run.
+  #
+  # veth stays with the parent. NetworkManager has no model for a pair of
+  # interfaces created together, so those are made with ip and are real as soon
+  # as the link is.
+  # connection.type is fixed when a profile is created and NetworkManager will
+  # not change it afterwards. A setter runs only where Puppet found the
+  # declared value different from the current one, so reaching here means the
+  # manifest is asking for something no provider can do, and saying so is more
+  # use than attempting it. Declaring the type a profile already has costs
+  # nothing - no setter runs - and creating a profile uses it normally.
+  def conn_type=(value)
+    raise Puppet::Error,
+          _("connection type cannot be changed from \"#{conn_type}\" to \"#{value}\": NetworkManager fixes it " \
+            'when the profile is created. Remove conn_type from the resource. Changing it means replacing the ' \
+            'profile, which takes the interface down with it.')
+  end
+
+  def exists?
+    return super if @resource[:link_kind] == :veth
+
+    !connection.empty?
+  end
 end

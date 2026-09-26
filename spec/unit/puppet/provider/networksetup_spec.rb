@@ -395,4 +395,108 @@ describe Puppet::Provider::NetworkSetup do # rubocop:disable RSpec/FilePath
       expect(described_class.nmcli_connection_show('nosuch')).to eq({})
     end
   end
+
+  describe '.nmcli_arguments' do
+    it 'names nothing when nothing was asked for' do
+      expect(described_class.nmcli_arguments({})).to eq([])
+    end
+
+    it 'joins an address and its prefix into the one property NetworkManager has' do
+      expect(described_class.nmcli_arguments('ipaddr' => '216.251.35.10', 'prefix' => '24'))
+        .to eq(['ipv4.addresses', '216.251.35.10/24'])
+    end
+
+    it 'accepts a netmask in place of a prefix' do
+      expect(described_class.nmcli_arguments('ipaddr' => '216.251.35.10', 'netmask' => '255.255.255.0'))
+        .to eq(['ipv4.addresses', '216.251.35.10/24'])
+    end
+
+    it 'translates the bootproto vocabularies it shares with ifcfg' do
+      expect(described_class.nmcli_arguments('bootproto' => 'static')).to eq(['ipv4.method', 'manual'])
+      expect(described_class.nmcli_arguments('bootproto' => 'dhcp')).to eq(['ipv4.method', 'auto'])
+    end
+
+    it 'passes through a method only NetworkManager has a word for' do
+      expect(described_class.nmcli_arguments('bootproto' => 'disabled')).to eq(['ipv4.method', 'disabled'])
+    end
+
+    it 'writes DNS as the one comma-separated property' do
+      expect(described_class.nmcli_arguments('dns' => ['10.250.1.1', '69.49.97.160']))
+        .to eq(['ipv4.dns', '10.250.1.1,69.49.97.160'])
+    end
+
+    it 'inverts defroute back into never-default' do
+      expect(described_class.nmcli_arguments('defroute' => 'yes')).to eq(['ipv4.never-default', 'no'])
+      expect(described_class.nmcli_arguments('defroute' => 'no')).to eq(['ipv4.never-default', 'yes'])
+    end
+
+    # A value that is neither on nor off is a mistake, and reading it as off
+    # would be a setting: ONBOOT=True in a hand-written ifcfg file would come
+    # back as no, and the autoconnect of a live interface would be turned off
+    # and the run reported as successful.
+    it 'refuses a value that is neither yes nor no' do
+      expect { described_class.switch_to_bool_str('truue') }
+        .to raise_error(Puppet::Error, %r{"truue" is not a yes/no value})
+      expect { described_class.switch_to_bool_str(nil) }
+        .to raise_error(Puppet::Error, %r{is not a yes/no value})
+    end
+
+    it 'reads a switch whatever its case' do
+      expect(described_class.switch_to_bool_str('True')).to eq('yes')
+      expect(described_class.switch_to_bool_str('NO')).to eq('no')
+      expect(described_class.switch_to_bool_str(true)).to eq('yes')
+      expect(described_class.switch_to_bool_str(0)).to eq('no')
+    end
+
+    # An unset switch is not a switch set to no. Reading it as one would turn
+    # IPv6 off on every profile that simply does not mention it.
+    it 'does not read an unmentioned ipv6init as off' do
+      expect(described_class.nmcli_arguments('ipv6_autoconf' => 'yes')).to eq(['ipv6.method', 'auto'])
+      expect(described_class.switch_state(nil)).to be_nil
+      expect(described_class.switch_state('')).to be_nil
+      expect(described_class.switch_state(false)).to eq('no')
+    end
+
+    it 'turns the two IPv6 switches into the one method' do
+      expect(described_class.nmcli_arguments('ipv6init' => 'no')).to eq(['ipv6.method', 'ignore'])
+      expect(described_class.nmcli_arguments('ipv6init' => 'yes', 'ipv6_autoconf' => 'yes'))
+        .to eq(['ipv6.method', 'auto'])
+      expect(described_class.nmcli_arguments('ipv6init' => 'yes', 'ipv6addr' => '2001:db8::1/64'))
+        .to eq(['ipv6.method', 'manual', 'ipv6.addresses', '2001:db8::1/64'])
+    end
+
+    # ifcfg named the primary by which key it was in; NetworkManager has one
+    # list whose first entry is the primary, so the order given is the order
+    # written.
+    it 'keeps the primary IPv6 address first and the secondaries after it' do
+      args = described_class.nmcli_arguments(
+        'ipv6addr' => '2001:db8::1',
+        'ipv6_prefixlength' => '64',
+        'ipv6addr_secondaries' => '2001:db8::2/64 2001:db8::3/64',
+      )
+
+      expect(args).to eq(['ipv6.addresses', '2001:db8::1/64, 2001:db8::2/64, 2001:db8::3/64'])
+    end
+
+    it 'writes an empty value where a property is being cleared' do
+      expect(described_class.nmcli_arguments('gateway' => nil)).to eq(['ipv4.gateway', ''])
+      expect(described_class.nmcli_arguments('hwaddr' => nil)).to eq(['802-3-ethernet.mac-address', ''])
+    end
+
+    it 'writes several properties for one invocation' do
+      args = described_class.nmcli_arguments(
+        'conn_name' => 'System eth0',
+        'device' => 'eth0',
+        'onboot' => true,
+        'bootproto' => 'none',
+      )
+
+      expect(args).to eq(
+        ['connection.id', 'System eth0',
+         'connection.interface-name', 'eth0',
+         'connection.autoconnect', 'yes',
+         'ipv4.method', 'manual'],
+      )
+    end
+  end
 end

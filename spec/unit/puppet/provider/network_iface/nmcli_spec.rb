@@ -56,6 +56,68 @@ describe Puppet::Type.type(:network_iface).provider(:nmcli) do
     end
   end
 
+  describe '#exists?' do
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(name: 'eth0', ensure: :present, provider: :nmcli)
+    end
+
+    let(:provider) { described_class.new(resource) }
+
+    it 'is true when NetworkManager has a profile for it' do
+      allow(described_class).to receive(:nmcli_connection_lookup)
+        .and_return('NAME' => 'eth0', 'UUID' => 'b0ab376a', 'DEVICE' => 'eth0')
+      allow(described_class).to receive(:nmcli_connection_show)
+        .and_return('connection.id' => 'eth0', 'connection.interface-name' => 'eth0')
+
+      expect(provider).to exist
+    end
+
+    it 'is false when it has none' do
+      allow(described_class).to receive(:nmcli_connection_lookup).and_return(nil)
+
+      expect(provider).not_to exist
+    end
+
+    # A profile bound to a MAC exists before the card is plugged in. Calling
+    # that absent would recreate the profile on every run.
+    it 'does not depend on the device being present' do
+      allow(described_class).to receive(:nmcli_connection_lookup)
+        .and_return('NAME' => 'eth0', 'UUID' => 'b0ab376a', 'DEVICE' => '')
+      allow(described_class).to receive(:nmcli_connection_show)
+        .and_return('connection.id' => 'eth0', '802-3-ethernet.mac-address' => '00:50:56:B9:1F:38')
+
+      expect(provider).to exist
+    end
+  end
+
+  describe '#conn_type=' do
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(name: 'lo', ensure: :present, provider: :nmcli)
+    end
+
+    let(:provider) { described_class.new(resource) }
+
+    before(:each) do
+      allow(described_class).to receive(:nmcli_connection_lookup)
+        .and_return('NAME' => 'lo', 'UUID' => '0d986ff8', 'DEVICE' => 'lo')
+      allow(described_class).to receive(:nmcli_connection_show)
+        .and_return('connection.id' => 'lo', 'connection.type' => 'loopback')
+    end
+
+    # A setter runs only where Puppet found the declared value different from
+    # the current one, so this is exactly the case of asking NetworkManager to
+    # change something it will not change.
+    it 'refuses to change the type of a profile that exists' do
+      expect { provider.conn_type = 'Ethernet' }
+        .to raise_error(Puppet::Error, %r{cannot be changed from "loopback" to "Ethernet"})
+    end
+
+    it 'says what to do about it' do
+      expect { provider.conn_type = 'Ethernet' }
+        .to raise_error(Puppet::Error, %r{Remove conn_type from the resource})
+    end
+  end
+
   describe 'what it inherits' do
     it 'is a child of the ip provider' do
       expect(described_class.ancestors).to include(ip_provider)

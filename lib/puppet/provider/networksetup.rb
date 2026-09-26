@@ -869,6 +869,112 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     }.compact
   end
 
+  # The inverse of nmcli_properties: properties named the way the types name
+  # them, as arguments to `nmcli connection modify`. Takes the whole set rather
+  # than one at a time, because several of them are one nmcli property between
+  # them - an address and its prefix, an IPv6 primary and its secondaries.
+  #
+  # Values are written whole. nmcli would also take +property and -property to
+  # append or remove list items, but the result of those depends on what was
+  # there before, which is the opposite of what a provider wants: Puppet
+  # declares a state, and writing the whole value reaches it in one step from
+  # wherever the profile happened to be.
+  def self.nmcli_arguments(props)
+    args = []
+
+    args += ['connection.id', props['conn_name']] if props.key?('conn_name')
+    args += ['connection.interface-name', props['device']] if props.key?('device')
+    args += ['connection.autoconnect', switch_to_bool_str(props['onboot'])] if props.key?('onboot')
+    args += ['802-3-ethernet.mac-address', props['hwaddr'].to_s] if props.key?('hwaddr')
+
+    args += ['ipv4.method', bootproto_to_nm_method(props['bootproto'])] if props['bootproto']
+    args += ['ipv4.addresses', ipv4_address_argument(props)] if props.key?('ipaddr')
+    args += ['ipv4.gateway', props['gateway'].to_s] if props.key?('gateway')
+    args += ['ipv4.dns', [props['dns']].flatten.compact.join(',')] if props.key?('dns')
+    args += ['ipv4.never-default', invert_switch(props['defroute'])] if props['defroute']
+
+    args += ['ipv6.method', ipv6_method_argument(props)] if props['ipv6init'] || props['ipv6_autoconf']
+    args += ['ipv6.addresses', ipv6_address_argument(props)] if props.key?('ipv6addr')
+    args += ['ipv6.gateway', props['ipv6_defaultgw'].to_s] if props.key?('ipv6_defaultgw')
+    args += ['ipv6.never-default', invert_switch(props['ipv6_defroute'])] if props['ipv6_defroute']
+
+    args
+  end
+
+  # An address and its prefix are one value. A netmask is accepted in its
+  # place, since the two are the same fact written differently, and an ifcfg
+  # era manifest is as likely to carry one as the other.
+  def self.ipv4_address_argument(props)
+    addr = props['ipaddr'].to_s
+    return '' if addr.empty?
+
+    prefix = props['prefix'] || (props['netmask'] && IPAddr.new("#{addr}/#{props['netmask']}").prefix)
+    prefix ? "#{addr}/#{prefix}" : addr
+  end
+
+  # ifcfg named the first address and the rest separately; NetworkManager has
+  # one list and treats its first entry as the primary. The order is therefore
+  # meaningful and is preserved exactly as given.
+  def self.ipv6_address_argument(props)
+    primary = props['ipv6addr'].to_s
+    return '' if primary.empty?
+
+    primary = [primary, props['ipv6_prefixlength']].compact.join('/') unless primary.include?('/') || props['ipv6_prefixlength'].nil?
+    ([primary] + [props['ipv6addr_secondaries']].flatten.compact.map(&:to_s).flat_map(&:split)).join(', ')
+  end
+
+  # IPV6INIT and IPV6_AUTOCONF were two switches; ipv6.method is one word.
+  # Off wins over everything, autoconfiguration over a static address, and a
+  # profile that says neither is left to autoconfigure, which is what
+  # NetworkManager does by default.
+  def self.ipv6_method_argument(props)
+    return 'ignore' if switch_state(props['ipv6init']) == 'no'
+    return 'auto' if switch_state(props['ipv6_autoconf']) == 'yes'
+    return 'manual' unless props['ipv6addr'].to_s.empty?
+
+    'auto'
+  end
+
+  def self.bootproto_to_nm_method(value)
+    {
+      'none' => 'manual',
+      'static' => 'manual',
+      'dhcp' => 'auto',
+      'bootp' => 'auto',
+    }.fetch(value.to_s, value.to_s)
+  end
+
+  SWITCH_ON = ['yes', 'true', '1'].freeze
+  SWITCH_OFF = ['no', 'false', '0'].freeze
+
+  # A switch is on or off and there is no third answer, so anything else
+  # raises rather than being read as off. Values reaching here come from the
+  # system as well as from a manifest - the type validates what a manifest
+  # says, but an ifcfg file written by hand can carry ONBOOT=True, which
+  # initscripts accepts - and reading that as "no" would turn off the
+  # autoconnect of a live interface and report success. Case is ignored for
+  # the same reason.
+  def self.switch_to_bool_str(value)
+    return 'yes' if SWITCH_ON.include?(value.to_s.downcase)
+    return 'no' if SWITCH_OFF.include?(value.to_s.downcase)
+
+    raise Puppet::Error, _("\"#{value}\" is not a yes/no value")
+  end
+
+  # yes, no, or nil for a switch that was not set at all - which is not the
+  # same as being set to no. switch_to_bool_str answers a two-state question
+  # and reads an unset switch as no, which is right where a value is being
+  # written and wrong where the absence of one has to mean "say nothing".
+  def self.switch_state(value)
+    return nil if value.nil? || value.to_s.empty?
+
+    switch_to_bool_str(value)
+  end
+
+  def self.invert_switch(value)
+    (switch_to_bool_str(value) == 'yes') ? 'no' : 'yes'
+  end
+
   def self.nm_type_to_conn_type(type)
     {
       '802-3-ethernet' => 'Ethernet',
@@ -883,6 +989,22 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   # of writing a line initscripts would ignore, which would leave the node
   # configured differently from what was declared, and reported as correct.
   IFCFG_UNKNOWN_BOOTPROTO = ['disabled', 'link-local', 'shared'].freeze
+
+  # TYPE in an ifcfg file names the device types initscripts knew. The types
+  # only NetworkManager has are refused for the same reason a bootproto it
+  # cannot express is: a line initscripts ignores leaves the node configured
+  # differently from what was declared, and reported as correct.
+  IFCFG_UNKNOWN_CONN_TYPE = ['802-3-ethernet', 'loopback', 'dummy', 'tun', 'veth',
+                             'bond', 'team', 'vlan', 'vrf', 'vxlan', 'macvlan',
+                             'ip-tunnel', 'wireguard'].freeze
+
+  def self.ifcfg_conn_type(value)
+    return value unless IFCFG_UNKNOWN_CONN_TYPE.include?(value.to_s)
+
+    raise Puppet::Error,
+          _("conn_type \"#{value}\" has no TYPE equivalent and cannot be written to an ifcfg file. " \
+            'It is available on releases managed through NetworkManager.')
+  end
 
   def self.ifcfg_bootproto(value)
     return value unless IFCFG_UNKNOWN_BOOTPROTO.include?(value.to_s)

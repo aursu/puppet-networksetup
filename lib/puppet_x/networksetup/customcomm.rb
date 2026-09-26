@@ -10,6 +10,13 @@ module CustomComm
       newvalues('Ethernet', 'CIPE', 'IPSEC', 'Modem', 'xDSL', 'ISDN',
                 'Wireless', 'Token Ring', 'CTC', 'GRE', 'IPIP', 'IPIP6', 'SIT',
                 'sit', 'InfiniBand', 'infiniband', 'Bridge', 'Tap',
+                # NetworkManager's own types. ifcfg had no word for most of
+                # these - a loopback profile was declared TYPE=Ethernet because
+                # initscripts wanted some TYPE - so they are only storable
+                # where the storage is NetworkManager.
+                '802-3-ethernet', 'loopback', 'dummy', 'tun', 'veth', 'bond',
+                'team', 'vlan', 'vrf', 'vxlan', 'macvlan', 'ip-tunnel',
+                'wireguard',
                 # https://github.com/openvswitch/ovs/blob/master/rhel/README.RHEL.rst
                 %r{^OVS[A-Za-z]*$})
     end
