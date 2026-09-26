@@ -948,4 +948,30 @@ EOF
       provider.create
     }
   end
+
+  # ipv4.method has three values BOOTPROTO has no word for. They are sayable
+  # since the type learned NetworkManager's vocabulary, and a release storing
+  # its configuration in ifcfg files has to refuse them rather than write a
+  # line initscripts ignores while reporting success.
+  describe 'a bootproto an ifcfg file cannot express' do
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: 'eth0',
+        ensure: :present,
+        bootproto: 'disabled',
+        provider: :ip,
+      )
+    end
+
+    it 'refuses to write it, naming the value' do
+      expect { described_class.new(resource).ifcfg_content }
+        .to raise_error(Puppet::Error, %r{bootproto "disabled" has no BOOTPROTO equivalent})
+    end
+
+    it 'writes the ones it can express' do
+      expect(described_class.ifcfg_bootproto('dhcp')).to eq('dhcp')
+      expect(described_class.ifcfg_bootproto('none')).to eq('none')
+      expect(described_class.ifcfg_bootproto(nil)).to be_nil
+    end
+  end
 end

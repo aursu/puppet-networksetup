@@ -878,6 +878,20 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     }.fetch(type, type)
   end
 
+  # BOOTPROTO has no word for NetworkManager's disabled, link-local or shared.
+  # A provider that stores its configuration in an ifcfg file says so instead
+  # of writing a line initscripts would ignore, which would leave the node
+  # configured differently from what was declared, and reported as correct.
+  IFCFG_UNKNOWN_BOOTPROTO = ['disabled', 'link-local', 'shared'].freeze
+
+  def self.ifcfg_bootproto(value)
+    return value unless IFCFG_UNKNOWN_BOOTPROTO.include?(value.to_s)
+
+    raise Puppet::Error,
+          _("bootproto \"#{value}\" has no BOOTPROTO equivalent and cannot be written to an ifcfg file. " \
+            'It is available on releases managed through NetworkManager.')
+  end
+
   # return Array of paths or empty array if there are no compatible paths
   def self.config_all
     Dir.glob('/etc/sysconfig/network-scripts/ifcfg-*').reject do |config|

@@ -111,7 +111,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_ipv6addr_secondaries = @resource[:ipv6addr_secondaries] || ipv6addr_secondaries
     ifcfg_ipv6_defaultgw = @resource[:ipv6_defaultgw] || ipv6_defaultgw
     ifcfg_ipv6_defroute = @resource[:ipv6_defroute] || ipv6_defroute
-    ifcfg_bootproto = @resource[:bootproto] || bootproto
+    ifcfg_bootproto = self.class.ifcfg_bootproto(@resource[:bootproto] || bootproto)
     ifcfg_defroute  = @resource[:defroute]  || defroute
     ifcfg_gateway   = @resource[:gateway]   || gateway
     ifcfg_hwaddr    = @resource[:hwaddr]    || hwaddr
