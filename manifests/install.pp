@@ -21,13 +21,15 @@ class networksetup::install (
   Boolean $manage_nm = $networksetup::globals::manage_nm,
 ) inherits networksetup::globals {
   if $facts['os']['family'] == 'RedHat' {
-    case $facts['os']['release']['major'] {
-      '8': {
+    $major = Integer($facts['os']['release']['major'])
+
+    case $major {
+      8: {
         if $manage_initscripts {
           package { $networksetup::params::initscripts: }
         }
       }
-      '9': {
+      9: {
         file { '/etc/sysconfig/network-scripts':
           ensure => directory,
         }
@@ -37,6 +39,11 @@ class networksetup::install (
           package { 'NetworkManager-initscripts-updown': }
         }
       }
+      # A release older than 8 is no longer this module's business, and must
+      # not fall into the branch below: EL6 and EL7 are still running in the
+      # fleet, and installing NetworkManager on them is not what dropping their
+      # support was meant to do.
+      Integer[0, 7]: {}
       default: {
         # Rocky/RHEL 10+: pure NetworkManager, no ifcfg files
         # Ensure NetworkManager is installed (should be by default)

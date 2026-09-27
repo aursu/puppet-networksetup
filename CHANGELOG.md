@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 2.1.1
+
+**Bugfixes**
+
+* A release older than 8 is no longer swept into the branch meant for EL10.
+  Dropping CentOS 7 in 2.0.0 removed its arm of the release case, and the
+  default arm means "everything else" rather than "newer than the ones named" -
+  so an EL6 or EL7 node would have been given `nmcli_managed` and had
+  NetworkManager installed on it. Both `networksetup::params` and
+  `networksetup::install` now compare the release as a number, and anything
+  older than 8 gets nothing of its own: whatever is installed there stays,
+  Puppet simply stops managing it
+
+  No node in the fleet is affected today - of the 79 EL6 and EL7 nodes running,
+  none includes this module - but that is a fact about the fleet and not about
+  the module
+
 ## Release 2.1.0
 
 **Features**
