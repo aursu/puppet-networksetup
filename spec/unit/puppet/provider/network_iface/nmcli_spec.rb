@@ -173,6 +173,82 @@ describe Puppet::Type.type(:network_iface).provider(:nmcli) do
     end
   end
 
+  describe '#flush' do
+    let(:resource) do
+      Puppet::Type.type(:network_iface).new(
+        name: 'eth0',
+        ensure: :present,
+        device: 'eth0',
+        ipaddr: '216.251.35.10',
+        prefix: 24,
+        provider: :nmcli,
+      )
+    end
+
+    let(:provider) { described_class.new(resource) }
+
+    def profile(active)
+      allow(described_class).to receive(:nmcli_connection_lookup)
+        .and_return('NAME' => 'eth0', 'UUID' => 'b0ab376a', 'DEVICE' => 'eth0', 'ACTIVE' => active)
+      allow(described_class).to receive(:nmcli_connection_show)
+        .and_return('connection.id' => 'eth0', 'connection.uuid' => 'b0ab376a')
+    end
+
+    it 'does nothing when nothing changed' do
+      profile('yes')
+      expect(described_class).not_to receive(:nmcli_connection_modify)
+
+      provider.flush
+    end
+
+    # Several of our properties are one of NetworkManager's between them, so
+    # the whole declared state goes in one invocation rather than only what
+    # changed, which would mean reassembling each composite by hand.
+    it 'writes the declared state in one invocation, then applies it' do
+      profile('yes')
+      provider.ipaddr = '216.251.35.11'
+
+      # onboot is not in the resource above and is written anyway: the type
+      # defaults it to yes, and a default is as declared as anything else.
+      expect(described_class).to receive(:nmcli_connection_modify)
+        .with('b0ab376a',
+              'connection.interface-name', 'eth0',
+              'connection.autoconnect', 'yes',
+              'ipv4.addresses', '216.251.35.10/24')
+      expect(described_class).to receive(:nmcli_device_reapply).with('eth0')
+
+      provider.flush
+    end
+
+    # A profile nothing is running takes effect when it is next activated, and
+    # asking NetworkManager to reapply it would fail for no reason.
+    it 'does not apply a profile no device is running' do
+      profile('no')
+      provider.ipaddr = '216.251.35.11'
+
+      allow(described_class).to receive(:nmcli_connection_modify)
+      expect(described_class).not_to receive(:nmcli_device_reapply)
+
+      provider.flush
+    end
+
+    # NetworkManager exits 6 for a change it cannot reapply. Reactivating would
+    # apply it and take the interface down, so the resource fails instead and
+    # says what applying it would cost.
+    it 'fails, rather than reactivating, when the change cannot be applied' do
+      profile('yes')
+      provider.ipaddr = '216.251.35.11'
+
+      allow(described_class).to receive(:nmcli_connection_modify)
+      allow(described_class).to receive(:nmcli_device_reapply)
+        .and_raise(Puppet::ExecutionFailure, "Can't reapply changes to '802-3-ethernet.s390-nettype' setting")
+
+      expect { provider.flush }
+        .to raise_error(Puppet::Error, %r{profile for eth0 was updated, but NetworkManager cannot apply it})
+      expect { provider.flush }.to raise_error(Puppet::Error, %r{interrupts the interface})
+    end
+  end
+
   describe '#conn_type=' do
     let(:resource) do
       Puppet::Type.type(:network_iface).new(name: 'lo', ensure: :present, provider: :nmcli)

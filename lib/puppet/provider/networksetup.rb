@@ -153,6 +153,19 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     nmcli_writer('connection', 'up', conn_id)
   end
 
+  # Apply a profile to the device already running it, without deactivating it.
+  # Measured on NetworkManager 1.56.0: an address change reapplies with rc 0
+  # and the device stays `100 (connected)` throughout. A change NetworkManager
+  # cannot reapply - MTU, and link-level settings generally - exits 6.
+  #
+  # The message names a property from the same setting group rather than the
+  # one that changed ("Can't reapply changes to '802-3-ethernet.s390-nettype'"
+  # after modifying the MTU), so there is nothing useful to parse out of it.
+  # Applied or not applied is the whole of the information.
+  def self.nmcli_device_reapply(device)
+    nmcli_writer('device', 'reapply', device)
+  end
+
   def self.link_create(*args)
     ip_caller('link', 'add', *args)
   end

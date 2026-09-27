@@ -38,10 +38,22 @@ Puppet::Type.type(:network_iface).provide(
     return @connection if @connection
 
     name = @resource[:conn_name] || @resource[:name]
-    device = @resource[:device] || interface_name || @resource[:name]
 
-    found = self.class.nmcli_connection_lookup(name, device)
-    @connection = found ? self.class.nmcli_connection_show(found['UUID']) : {}
+    @listed = self.class.nmcli_connection_lookup(name, device_name)
+    @connection = @listed ? self.class.nmcli_connection_show(@listed['UUID']) : {}
+  end
+
+  def device_name
+    @resource[:device] || interface_name || @resource[:name]
+  end
+
+  # Whether a device is running this profile right now. Only then is there
+  # anything to apply: a profile nothing is using takes effect when it is next
+  # activated, and asking NetworkManager to reapply it would fail for no
+  # reason.
+  def active?
+    connection
+    @listed && @listed['ACTIVE'] == 'yes'
   end
 
   # The one method the whole read path hangs from: every property getter the
@@ -109,6 +121,47 @@ Puppet::Type.type(:network_iface).provide(
   def destroy
     self.class.nmcli_connection_delete(connection['connection.uuid']) unless connection.empty?
     self.class.link_delete(@resource[:name]) if @resource[:link_kind]
+  end
+
+  # One `connection modify` carries every declared property, not only the ones
+  # Puppet found changed. Several properties of ours are one of
+  # NetworkManager's between them - an address and its prefix, an IPv6 primary
+  # and its secondaries - so writing only what changed would mean reassembling
+  # each composite from a mixture of new and current values. Writing the
+  # declared state whole is one command, idempotent, and needs no such
+  # arithmetic.
+  def flush
+    return if @property_flush.empty?
+
+    self.class.nmcli_connection_modify(
+      connection['connection.uuid'],
+      *self.class.nmcli_arguments(declared_properties),
+    )
+
+    apply
+
+    @property_hash.merge!(@property_flush)
+    @property_flush.clear
+  end
+
+  # Writing a profile does not change the device running it. reapply does,
+  # without interrupting it - but not for every property. Where NetworkManager
+  # refuses, the profile is already correct and only the running device is
+  # behind, so the resource fails rather than reactivating the connection
+  # itself: that would take the interface down, and on the interface Puppet is
+  # talking over, the run would take its own connection with it.
+  def apply
+    return unless active?
+
+    begin
+      self.class.nmcli_device_reapply(device_name)
+    rescue Puppet::ExecutionFailure => e
+      raise Puppet::Error,
+            _("the profile for #{device_name} was updated, but NetworkManager cannot apply it to the " \
+              'running device: ' + e.message.to_s.strip + '. It takes effect when the connection is ' \
+              "reactivated - `nmcli connection up #{@resource[:conn_name] || @resource[:name]}` - which " \
+              'interrupts the interface.')
+    end
   end
 
   # connection.type is fixed when a profile is created and NetworkManager will
