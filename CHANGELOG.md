@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 2.1.3
+
+**Bugfixes**
+
+* `network_iface` on NetworkManager keeps the secondary addresses it does not
+  declare. On `lo` the address list has several owners - the interface
+  declares `127.0.0.1`, each `network_alias` adds an entry - and a flush wrote
+  the list whole from the interface's own address, erasing every alias until
+  the aliases put themselves back later in the run. Undeclared secondaries are
+  now carried over; declaring them, an empty list included, still writes the
+  list whole. A behaviour change on EL10: extra addresses on a profile are no
+  longer removed by omission
+* `networksetup::loopback` writes its IPv6 list on EL10. `ipv6.addresses` was
+  written only with its primary, which the class did not declare, so the
+  list never reached the profile. The class now declares `lo`'s own `::1`
+  with length 128, and the `nmcli` provider reads and writes
+  `ipv6_prefixlength` and reads `ipv6addr_secondaries` as a list - each of
+  which alone kept the resource out of sync on every run. EL8 and EL9 are
+  unchanged
+
 ## Release 2.1.2
 
 **Bugfixes**
