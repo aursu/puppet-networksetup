@@ -141,8 +141,9 @@ Puppet::Type.type(:network_alias).provide(
     info['ifa_label'] || parent_device
   end
 
-  # Measured on NetworkManager 1.56.0: an address put on the device with
-  # `ip addr add ... label` keeps its label through `nmcli device reapply`,
+  # Measured on NetworkManager 1.56.0 and the kernel under it: an address put
+  # on the device with `ip addr add ... label` keeps its label through
+  # `nmcli device reapply`,
   # and loses it when the connection is fully reactivated, which re-adds every
   # address without one. So the label is applied before the reapply, while the
   # address is not yet on the device - afterwards it would be EEXIST - and
@@ -160,7 +161,13 @@ Puppet::Type.type(:network_alias).provide(
     if info.empty?
       self.class.addr_create(address, 'dev', parent_device, 'label', wanted)
     elsif info['ifa_label'] != wanted
-      self.class.addr_change(address, parent_device, wanted)
+      # `ip addr change <addr> dev <dev> label <label>` exits 0 and changes
+      # nothing - measured - so the entry is replaced instead. The address is
+      # absent for the moment between the two calls, which happens only after
+      # a reactivation has stripped the label, and therefore only on a device
+      # that has just come up.
+      self.class.addr_delete(address, parent_device)
+      self.class.addr_create(address, 'dev', parent_device, 'label', wanted)
     else
       return
     end

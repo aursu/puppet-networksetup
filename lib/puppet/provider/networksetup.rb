@@ -670,10 +670,6 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     addr_lookup(addr)['ifa_label']
   end
 
-  def self.addr_change(addr, device, label)
-    ip_caller('addr', 'change', addr, 'dev', device, 'label', label)
-  end
-
   def self.addr_lookup_net(addr)
     return [] if addr.nil? || addr.empty?
 

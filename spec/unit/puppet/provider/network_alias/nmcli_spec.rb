@@ -29,7 +29,7 @@ describe Puppet::Type.type(:network_alias).provider(:nmcli) do
     allow(described_class).to receive(:addr_lookup).and_return({})
     allow(described_class).to receive(:addr_label).and_return('lo:myspc')
     allow(described_class).to receive(:addr_create)
-    allow(described_class).to receive(:addr_change)
+    allow(described_class).to receive(:addr_delete)
   end
 
   describe '#exists?' do
@@ -135,12 +135,16 @@ describe Puppet::Type.type(:network_alias).provider(:nmcli) do
       provider.create
     end
 
+    # `ip addr change ... label` exits 0 and changes nothing, so the entry is
+    # replaced rather than edited.
     it 'is put back on an address a reactivation stripped it from' do
       profile('64.29.155.171/32, 127.0.0.1/8')
       allow(described_class).to receive(:addr_lookup)
         .and_return('local' => '64.29.155.171', 'ifa_label' => 'lo')
 
-      expect(described_class).to receive(:addr_change).with('64.29.155.171/32', 'lo', 'lo:myspc')
+      expect(described_class).to receive(:addr_delete).with('64.29.155.171/32', 'lo').ordered
+      expect(described_class).to receive(:addr_create)
+        .with('64.29.155.171/32', 'dev', 'lo', 'label', 'lo:myspc').ordered
 
       provider.apply_label
     end
@@ -150,7 +154,7 @@ describe Puppet::Type.type(:network_alias).provider(:nmcli) do
       allow(described_class).to receive(:addr_lookup)
         .and_return('local' => '64.29.155.171', 'ifa_label' => 'lo:myspc')
 
-      expect(described_class).not_to receive(:addr_change)
+      expect(described_class).not_to receive(:addr_delete)
       expect(described_class).not_to receive(:addr_create)
 
       provider.apply_label
