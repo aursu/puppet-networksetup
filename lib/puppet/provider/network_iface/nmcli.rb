@@ -67,6 +67,25 @@ Puppet::Type.type(:network_iface).provide(
     ifcfg_data['ipaddr_secondaries']&.split&.map(&:strip)
   end
 
+  def ipv6addr_secondaries
+    ifcfg_data['ipv6addr_secondaries']&.split&.map(&:strip)
+  end
+
+  # An IPv6 length the type keeps apart from the address. The parent reads it
+  # off IPV6ADDR, which carried both; a profile is parsed into the two halves,
+  # so here it is read as parsed. It is not in MANAGED_PROPERTIES, the list
+  # the ifcfg providers are generated from, and it is added here rather than
+  # there so that EL8 and EL9 stay as they are.
+  NMCLI_PROPERTIES = [:ipv6_prefixlength].freeze
+
+  def ipv6_prefixlength
+    ifcfg_data['ipv6_prefixlength']
+  end
+
+  def ipv6_prefixlength=(value)
+    @property_flush[:ipv6_prefixlength] = value
+  end
+
   def ifcfg_data
     @addrinfo ||= self.class.nmcli_properties(
       connection,
@@ -93,7 +112,7 @@ Puppet::Type.type(:network_iface).provide(
   # what this resource's own type has - asking a network_iface for arpcheck,
   # which belongs to network_alias, raises rather than returning nil.
   def declared_properties
-    self.class::MANAGED_PROPERTIES.each_with_object({}) do |attr, props|
+    (self.class::MANAGED_PROPERTIES + NMCLI_PROPERTIES).each_with_object({}) do |attr, props|
       next unless @resource.class.validattr?(attr)
 
       value = @resource[attr]

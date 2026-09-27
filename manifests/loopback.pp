@@ -40,6 +40,20 @@ class networksetup::loopback (
     $loopback_conn_name = 'loopback'
   }
 
+  # ifcfg kept IPV6ADDR_SECONDARIES on its own; NetworkManager has one
+  # ipv6.addresses list, headed by lo's own ::1/128, and writes it only
+  # together with that primary. So where it is the storage the primary is
+  # declared too - address and length apart, since that is the form the
+  # profile is read back in.
+  if $networksetup::globals::nmcli_managed and $ipv6init {
+    $loopback_ipv6addr          = '::1'
+    $loopback_ipv6_prefixlength = 128
+  }
+  else {
+    $loopback_ipv6addr          = undef
+    $loopback_ipv6_prefixlength = undef
+  }
+
   network_iface { 'lo':
     conn_type            => $loopback_conn_type,
     ipaddr               => '127.0.0.1',
@@ -48,6 +62,8 @@ class networksetup::loopback (
     broadcast            => $loopback_broadcast,
     onboot               => true,
     conn_name            => $loopback_conn_name,
+    ipv6addr             => $loopback_ipv6addr,
+    ipv6_prefixlength    => $loopback_ipv6_prefixlength,
     ipv6addr_secondaries => $ipv6addr_secondaries,
     ipv6init             => $ipv6init,
   }

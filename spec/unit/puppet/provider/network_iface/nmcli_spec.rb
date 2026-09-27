@@ -272,6 +272,60 @@ describe Puppet::Type.type(:network_iface).provider(:nmcli) do
       end
     end
 
+    # networksetup::loopback where NetworkManager is the storage: lo's own
+    # ::1/128 heads the one ipv6.addresses list, declared as address and
+    # length apart. What is written has to read back as what was declared, or
+    # the resource changes on every run.
+    context 'on a loopback with an IPv6 list' do
+      let(:resource) do
+        Puppet::Type.type(:network_iface).new(
+          name: 'lo',
+          ensure: :present,
+          ipaddr: '127.0.0.1',
+          netmask: '255.0.0.0',
+          ipv6init: true,
+          ipv6addr: '::1',
+          ipv6_prefixlength: 128,
+          ipv6addr_secondaries: ['2001:1810:4040:3::1/128', '2001:1810:4040:3::2/128'],
+          provider: :nmcli,
+        )
+      end
+
+      def lo_profile(ipv6_addresses)
+        allow(described_class).to receive(:nmcli_connection_lookup)
+          .and_return('NAME' => 'lo', 'UUID' => '20be7eb0', 'DEVICE' => 'lo', 'ACTIVE' => 'yes')
+        # web170c25, 2026-09-28: ipv6.method manual, ipv6.addresses ::1/128
+        allow(described_class).to receive(:nmcli_connection_show)
+          .and_return('connection.id' => 'lo', 'connection.uuid' => '20be7eb0',
+                      'connection.type' => 'loopback', 'connection.interface-name' => 'lo',
+                      'ipv4.method' => 'manual', 'ipv4.addresses' => '127.0.0.1/8',
+                      'ipv6.method' => 'manual', 'ipv6.addresses' => ipv6_addresses)
+      end
+
+      it 'writes the list headed by ::1/128 and keeps the method manual' do
+        lo_profile('::1/128')
+        allow(described_class).to receive(:nmcli_device_reapply)
+        provider.ipv6addr_secondaries = resource[:ipv6addr_secondaries]
+
+        expect(described_class).to receive(:nmcli_connection_modify)
+          .with('20be7eb0', 'connection.autoconnect', 'yes',
+                'ipv4.addresses', '127.0.0.1/8',
+                'ipv6.method', 'manual',
+                'ipv6.addresses', '::1/128, 2001:1810:4040:3::1/128, 2001:1810:4040:3::2/128')
+
+        provider.flush
+      end
+
+      it 'reads back in sync once written' do
+        lo_profile('::1/128, 2001:1810:4040:3::1/128, 2001:1810:4040:3::2/128')
+
+        [:ipv6init, :ipv6addr, :ipv6_prefixlength, :ipv6addr_secondaries].each do |attr|
+          property = resource.property(attr)
+          expect(property.safe_insync?(provider.send(attr))).to be(true), "#{attr}: #{provider.send(attr).inspect}"
+        end
+      end
+    end
+
     # A profile nothing is running takes effect when it is next activated, and
     # asking NetworkManager to reapply it would fail for no reason.
     it 'does not apply a profile no device is running' do

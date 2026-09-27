@@ -31,9 +31,39 @@ describe 'networksetup::loopback' do
         it 'does not rename the profile NetworkManager generated' do
           is_expected.to contain_network_iface('lo').without_conn_name
         end
+
+        it 'declares no IPv6 primary when there is no IPv6 list' do
+          is_expected.to contain_network_iface('lo').without_ipv6addr.without_ipv6_prefixlength
+        end
+
+        # ipv6.addresses is one list headed by ::1/128 and is written only with
+        # its primary; declared apart, address and length match how the
+        # profile is read back.
+        context 'with IPv6 secondaries' do
+          let(:params) { { ipv6addr_secondaries: ['2001:1810:4040:3::1/128', '2001:1810:4040:3::2/128'] } }
+
+          it {
+            is_expected.to contain_network_iface('lo')
+              .with_ipv6init(true)
+              .with_ipv6addr('::1')
+              .with_ipv6_prefixlength(128)
+              .with_ipv6addr_secondaries(['2001:1810:4040:3::1/128', '2001:1810:4040:3::2/128'])
+          }
+        end
       else
         it 'keeps declaring TYPE=Ethernet where an ifcfg file is written' do
           is_expected.to contain_network_iface('lo').with_conn_type('Ethernet')
+        end
+
+        context 'with IPv6 secondaries' do
+          let(:params) { { ipv6addr_secondaries: ['2001:1810:4040:3::1/128'] } }
+
+          it 'keeps IPV6ADDR_SECONDARIES on its own, as ifcfg had it' do
+            is_expected.to contain_network_iface('lo')
+              .with_ipv6addr_secondaries(['2001:1810:4040:3::1/128'])
+              .without_ipv6addr
+              .without_ipv6_prefixlength
+          end
         end
 
         it 'keeps declaring the ifcfg keys byte for byte' do
