@@ -23,15 +23,21 @@ class networksetup::loopback (
   # NETWORK and BROADCAST were ifcfg keys; NetworkManager derives both from the
   # address and stores neither, so declaring them where it is the storage
   # leaves the resource permanently out of sync.
+  # NAME=loopback is an ifcfg key too. NetworkManager generates its own profile
+  # for the loopback interface and calls it lo; declaring a different name
+  # makes Puppet rename a profile it did not create, for no effect. The
+  # addresses are the module's business here, the name is not.
   if $networksetup::globals::nmcli_managed {
     $loopback_conn_type = undef
     $loopback_network   = undef
     $loopback_broadcast = undef
+    $loopback_conn_name = undef
   }
   else {
     $loopback_conn_type = 'Ethernet'
     $loopback_network   = '127.0.0.0'
     $loopback_broadcast = '127.255.255.255'
+    $loopback_conn_name = 'loopback'
   }
 
   network_iface { 'lo':
@@ -41,7 +47,7 @@ class networksetup::loopback (
     network              => $loopback_network,
     broadcast            => $loopback_broadcast,
     onboot               => true,
-    conn_name            => 'loopback',
+    conn_name            => $loopback_conn_name,
     ipv6addr_secondaries => $ipv6addr_secondaries,
     ipv6init             => $ipv6init,
   }

@@ -24,6 +24,13 @@ describe 'networksetup::loopback' do
           is_expected.to contain_network_iface('lo').without_network
           is_expected.to contain_network_iface('lo').without_broadcast
         end
+
+        # NetworkManager generates a profile for the loopback interface and
+        # calls it lo. Declaring another name renames a profile the module did
+        # not create, to no effect.
+        it 'does not rename the profile NetworkManager generated' do
+          is_expected.to contain_network_iface('lo').without_conn_name
+        end
       else
         it 'keeps declaring TYPE=Ethernet where an ifcfg file is written' do
           is_expected.to contain_network_iface('lo').with_conn_type('Ethernet')
@@ -33,6 +40,7 @@ describe 'networksetup::loopback' do
           is_expected.to contain_network_iface('lo')
             .with_network('127.0.0.0')
             .with_broadcast('127.255.255.255')
+            .with_conn_name('loopback')
         end
       end
     end
