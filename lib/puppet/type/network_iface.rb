@@ -154,7 +154,11 @@ Puppet::Type.newtype(:network_iface) do
   newproperty(:nm_controlled, parent: PuppetX::NetworkSetup::SwitchProperty) do
     desc 'Tells NetworkManager if it should handle this interface or not (NM_CONTROLLED)'
 
-    defaultto 'no'
+    # No default here. NM_CONTROLLED is a key an ifcfg file wants, not a fact
+    # about an interface, so the provider that writes one supplies it - see
+    # ifcfg_content. Defaulting it in the type would give the value to every
+    # provider, including one storing a NetworkManager profile, which has
+    # nowhere to keep it and would report the resource as changed on every run.
   end
 
   # https://access.redhat.com/solutions/3101041

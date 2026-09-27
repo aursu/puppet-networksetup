@@ -441,10 +441,15 @@ EOF
     let(:ifcfg) { File.open(Dir.pwd + '/spec/fixtures/files/ifcfg-lo', 'w', 0o600) }
 
     let(:resource_name) { 'lo' }
+    # Pinned, because what this example checks is what the ip provider writes.
+    # Left to resolve on its own it picks up whichever provider the host
+    # suggests, and NM_CONTROLLED is defaulted only where an ifcfg file is
+    # what gets written.
     let(:resource) do
       Puppet::Type.type(:network_iface).new(
         name: resource_name,
         ensure: :present,
+        provider: :ip,
       )
     end
     let(:provider) do

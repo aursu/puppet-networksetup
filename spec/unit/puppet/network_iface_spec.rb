@@ -192,6 +192,23 @@ EOT
   # written for ifcfg must stay in sync on a host whose profile reports the
   # NetworkManager word, or it would be rewritten on every run with neither
   # value being wrong.
+  # A property that is defaulted but can never be read back is a resource that
+  # changes on every run and never converges. On a live EL10 node this showed
+  # as "nm_controlled changed  to 'no'" on every apply - the empty gap being
+  # the value that was never there.
+  describe 'nm_controlled, which only an ifcfg file can hold' do
+    it 'is not defaulted by the type, whichever provider is chosen' do
+      expect(described_class.new(name: 'eth0', provider: :ip)[:nm_controlled]).to be_nil
+      expect(described_class.new(name: 'eth0', provider: :nmcli)[:nm_controlled]).to be_nil
+    end
+
+    it 'is whatever a resource declares' do
+      resource = described_class.new(name: 'eth0', provider: :nmcli, nm_controlled: 'yes')
+
+      expect(resource[:nm_controlled]).to eq('yes')
+    end
+  end
+
   describe 'bootproto across the two vocabularies' do
     def bootproto(declared)
       described_class.new(name: 'eth0', bootproto: declared).property(:bootproto)

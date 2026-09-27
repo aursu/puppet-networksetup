@@ -120,7 +120,9 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
     ifcfg_slave     = @resource[:slave]     || slave
     ifcfg_master    = @resource[:master]    || master
     ifcfg_uuid      = @resource[:uuid]      || uuid
-    ifcfg_nm_controlled = @resource[:nm_controlled] || nm_controlled
+    # an ifcfg file without NM_CONTROLLED is one NetworkManager may take over,
+    # so a resource that says nothing gets the answer initscripts expected
+    ifcfg_nm_controlled = @resource[:nm_controlled] || nm_controlled || 'no'
 
     res_ipv6addr = @resource[:ipv6addr]
     res_prefixlength = @resource[:ipv6_prefixlength]
