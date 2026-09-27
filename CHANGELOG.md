@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 2.1.0
+
+**Features**
+
+* `network_alias` can be managed on Rocky/RHEL 10. An alias is not an object in
+  NetworkManager - it is one entry of the parent connection's address list - so
+  the provider adds and removes single entries rather than writing the property,
+  which is what lets several resources share it
+* Alias labels survive. NetworkManager has nowhere to store one, so the label is
+  applied to the live address with `ip` before the profile is applied, and a
+  later run puts it back after a reactivation has stripped it. The alias reports
+  its `device` from the live label, which is what makes that run notice
+* `network_route` can be managed on Rocky/RHEL 10. A default route is the
+  connection gateway and any other route is an entry of its route list; the
+  destination decides which
+* `network_route` gains a `metric` property, handled by both providers - the
+  `ip` one puts it on the live route and into `route-<dev>`, the `nmcli` one
+  writes it as the third token of the entry. There was no way to express a
+  metric before, on any release
+* `network_iface` gains `ipaddr_secondaries`, the IPv4 counterpart of the
+  `ipv6addr_secondaries` that ifcfg always had. Where NetworkManager is the
+  storage both families are one list, so additional addresses can belong to the
+  interface resource instead of to aliases of their own
+* A `network_alias` now autorequires the `network_iface` of its parent device:
+  the alias is modified through the parent profile, so the ordering is
+  correctness rather than tidiness
+
+**Bugfixes**
+
+* `network_iface` no longer takes the first address of a connection for its own.
+  On a host whose aliases came from ifcfg files, `127.0.0.1/8` is the *last*
+  entry of the loopback connection, and the interface would have rewritten the
+  profile on every run
+* `networksetup::loopback::ipv4` and `::ipv6` no longer declare `conn_type`
+  where NetworkManager is the storage. `TYPE` belongs to the parent connection
+  there, and an alias declaring it asks for a change no provider can make
+* An `ifcfg` provider refuses `ipaddr_secondaries` rather than writing a line
+  initscripts would ignore, as it already does for `bootproto` and `conn_type`
+
+**Known Issues**
+
+* Bridge membership is still not persisted, and never was: `BRIDGE` is written
+  to no `ifcfg` file, and setting `bridge` on a non-veth interface has no effect
+* Loopback aliases on web nodes are written by the separate `loopbacks` module,
+  which still renders `ifcfg` files and calls `ifup`. Until it gains a
+  NetworkManager path, those nodes cannot move to EL10 whatever this module can
+  do
+
 ## Release 2.0.0
 
 **Breaking changes**
