@@ -662,6 +662,18 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   #          "preferred_lft" => "56789"
   #        }
   #      ]
+  # The label the kernel carries for an address - what `ip a` shows as
+  # lo:myspc. NetworkManager's address list has no room for one, so on a
+  # release it stores, a label is live state only: the profile carries the
+  # address and the label is put on it afterwards.
+  def self.addr_label(addr)
+    addr_lookup(addr)['ifa_label']
+  end
+
+  def self.addr_change(addr, device, label)
+    ip_caller('addr', 'change', addr, 'dev', device, 'label', label)
+  end
+
   def self.addr_lookup_net(addr)
     return [] if addr.nil? || addr.empty?
 
@@ -836,14 +848,21 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   # run. Where the mapping loses meaning it stays nil instead: ipv4.method
   # disabled, link-local and shared have no BOOTPROTO to be, and inventing one
   # would be a lie rather than a translation.
-  def self.nmcli_properties(desc)
+  # `primary` names the addresses the resource asking considers its own. The
+  # order of ipv4.addresses says nothing: on a web node whose aliases came from
+  # ifcfg files, 127.0.0.1/8 is the *last* entry of the loopback connection and
+  # the service addresses precede it. So an address the resource declares is
+  # its primary wherever it sits in the list, and only when it declares none,
+  # or names one that is not there, does position decide.
+  def self.nmcli_properties(desc, primary = {})
     return {} if desc.nil? || desc.empty?
 
     read = ->(key) { (desc[key].nil? || desc[key].empty?) ? nil : desc[key] }
     invert = ->(key) { read.call(key) && ((read.call(key) == 'yes') ? 'no' : 'yes') }
 
-    addr, prefix = (read.call('ipv4.addresses') || '').split(',').first.to_s.split('/')
-    ipv6addr, *ipv6_secondaries = (read.call('ipv6.addresses') || '').split(',').map(&:strip)
+    addr, *secondaries = address_list(read.call('ipv4.addresses'), primary['ipaddr'])
+    addr, prefix = addr.to_s.split('/')
+    ipv6addr, *ipv6_secondaries = address_list(read.call('ipv6.addresses'), primary['ipv6addr'])
     ipv6addr, ipv6_prefixlength = ipv6addr.to_s.split('/')
     ipv4_method = read.call('ipv4.method')
     ipv6_method = read.call('ipv6.method')
@@ -862,6 +881,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
       # the two vocabularies are equivalent where they overlap.
       'bootproto' => ipv4_method,
       'ipaddr' => addr,
+      'ipaddr_secondaries' => secondaries.empty? ? nil : secondaries.join(' '),
       'prefix' => prefix,
       'netmask' => prefix && IPAddr.new('255.255.255.255').mask(prefix.to_i).to_s,
       'gateway' => read.call('ipv4.gateway'),
@@ -922,7 +942,15 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     return '' if addr.empty?
 
     prefix = props['prefix'] || (props['netmask'] && IPAddr.new("#{addr}/#{props['netmask']}").prefix)
-    prefix ? "#{addr}/#{prefix}" : addr
+    primary = prefix ? "#{addr}/#{prefix}" : addr
+
+    ([primary] + secondary_list(props['ipaddr_secondaries'])).join(', ')
+  end
+
+  # Secondaries arrive as an array from a resource and as a space-separated
+  # string from ifcfg_data, since that is the shape IPV6ADDR_SECONDARIES had.
+  def self.secondary_list(value)
+    [value].flatten.compact.map(&:to_s).flat_map(&:split)
   end
 
   # ifcfg named the first address and the rest separately; NetworkManager has
@@ -933,7 +961,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     return '' if primary.empty?
 
     primary = [primary, props['ipv6_prefixlength']].compact.join('/') unless primary.include?('/') || props['ipv6_prefixlength'].nil?
-    ([primary] + [props['ipv6addr_secondaries']].flatten.compact.map(&:to_s).flat_map(&:split)).join(', ')
+    ([primary] + secondary_list(props['ipv6addr_secondaries'])).join(', ')
   end
 
   # IPV6INIT and IPV6_AUTOCONF were two switches; ipv6.method is one word.
@@ -1025,6 +1053,16 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
             'Give a conn_type NetworkManager knows, such as Ethernet or Bridge.')
   end
 
+  # An address list with the resource's own address first, whatever order
+  # NetworkManager reports it in.
+  def self.address_list(value, primary = nil)
+    addresses = value.to_s.split(',').map(&:strip).reject(&:empty?)
+    return addresses if primary.nil? || primary.to_s.empty?
+
+    own = addresses.find { |a| a.split('/').first == primary.to_s.split('/').first }
+    own ? [own] + (addresses - [own]) : addresses
+  end
+
   def self.nm_type_to_conn_type(type)
     {
       '802-3-ethernet' => 'Ethernet',
@@ -1054,6 +1092,18 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     raise Puppet::Error,
           _("conn_type \"#{value}\" has no TYPE equivalent and cannot be written to an ifcfg file. " \
             'It is available on releases managed through NetworkManager.')
+  end
+
+  # ifcfg had no IPADDR_SECONDARIES. Additional IPv4 addresses were alias files
+  # of their own, which is what network_alias is, so a list here has nowhere to
+  # be written and saying so beats writing a line initscripts ignores.
+  def self.ifcfg_secondaries(value)
+    return value if value.nil? || [value].flatten.compact.empty?
+
+    raise Puppet::Error,
+          _('ipaddr_secondaries cannot be written to an ifcfg file, which has no key for a list of ' \
+            'addresses. Use network_alias for the additional addresses, or a release managed ' \
+            'through NetworkManager.')
   end
 
   def self.ifcfg_bootproto(value)
@@ -1153,6 +1203,7 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
   # to know which of a resource's attributes are properties at all.
   MANAGED_PROPERTIES = [:arpcheck,
                         :bootproto,
+                        :ipaddr_secondaries,
                         :broadcast,
                         :conn_name,
                         :conn_type,

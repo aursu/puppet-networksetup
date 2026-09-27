@@ -58,6 +58,20 @@ Puppet::Type.newtype(:network_alias) do
     end
   end
 
+  # An alias is an entry of the parent interface's connection profile, so the
+  # parent has to exist before there is anything to add an address to - on a
+  # NetworkManager release its profile is what carries the uuid the alias is
+  # modified through.
+  #
+  # It also settles what happens where an operator declares both these
+  # resources and ipaddr_secondaries on the parent: the parent writes the list
+  # whole, then the aliases add themselves back, so the state after a run is
+  # right. Puppet will report changes on every run while both are declared,
+  # which is the signal that one of them should go.
+  autorequire(:network_iface) do
+    [self[:parent_device]].compact
+  end
+
   validate do
     if self[:parent_device]
       self[:device] = [self[:parent_device], self[:name]].join(':') unless self[:device]

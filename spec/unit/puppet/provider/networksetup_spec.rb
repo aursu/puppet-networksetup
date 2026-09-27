@@ -168,6 +168,37 @@ describe Puppet::Provider::NetworkSetup do # rubocop:disable RSpec/FilePath
       expect(described_class.nmcli_properties(el8)['master']).to eq('br0')
     end
 
+    # The loopback connection of a web node, whose aliases came from ifcfg
+    # files: 57 service addresses and 127.0.0.1/8 last of all. Position says
+    # nothing about which address a resource considers its own.
+    let(:loopback_with_aliases) do
+      described_class.nmcli_parse(
+        "connection.id:lo\nipv4.method:manual\n" \
+        'ipv4.addresses:64.29.145.183/32, 64.29.155.171/32, 69.49.118.0/24, 127.0.0.1/8' + "\n",
+      )
+    end
+
+    it 'takes the address the resource declares, wherever it sits in the list' do
+      props = described_class.nmcli_properties(loopback_with_aliases, 'ipaddr' => '127.0.0.1')
+
+      expect(props['ipaddr']).to eq('127.0.0.1')
+      expect(props['prefix']).to eq('8')
+      expect(props['ipaddr_secondaries'])
+        .to eq('64.29.145.183/32 64.29.155.171/32 69.49.118.0/24')
+    end
+
+    it 'falls back to the first address when the resource declares none' do
+      props = described_class.nmcli_properties(loopback_with_aliases)
+
+      expect(props['ipaddr']).to eq('64.29.145.183')
+    end
+
+    it 'falls back to the first address when the declared one is not there' do
+      props = described_class.nmcli_properties(loopback_with_aliases, 'ipaddr' => '10.0.0.1')
+
+      expect(props['ipaddr']).to eq('64.29.145.183')
+    end
+
     it 'takes the first IPv6 address as the primary and the rest as secondaries' do
       desc = described_class.nmcli_parse("ipv6.method:manual\nipv6.addresses:2001:db8::1/64, 2001:db8::2/64, 2001:db8::3/64\n")
       props6 = described_class.nmcli_properties(desc)
@@ -476,6 +507,16 @@ describe Puppet::Provider::NetworkSetup do # rubocop:disable RSpec/FilePath
       )
 
       expect(args).to eq(['ipv6.addresses', '2001:db8::1/64, 2001:db8::2/64, 2001:db8::3/64'])
+    end
+
+    it 'writes the primary address first and the secondaries after it' do
+      args = described_class.nmcli_arguments(
+        'ipaddr' => '127.0.0.1',
+        'prefix' => '8',
+        'ipaddr_secondaries' => ['64.29.145.183/32', '64.29.155.171/32'],
+      )
+
+      expect(args).to eq(['ipv4.addresses', '127.0.0.1/8, 64.29.145.183/32, 64.29.155.171/32'])
     end
 
     it 'writes an empty value where a property is being cleared' do

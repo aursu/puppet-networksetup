@@ -60,8 +60,19 @@ Puppet::Type.type(:network_iface).provide(
   # base class defines is `ifcfg_data[attr]`, so replacing the persistence
   # layer is replacing this. The parent reads and parses an ifcfg file; here
   # the same hash comes out of a NetworkManager profile.
+  # ifcfg_data carries these as a space-separated string, the shape
+  # IPV6ADDR_SECONDARIES had, and the type wants an array - the same split the
+  # parent does for the IPv6 list.
+  def ipaddr_secondaries
+    ifcfg_data['ipaddr_secondaries']&.split&.map(&:strip)
+  end
+
   def ifcfg_data
-    @addrinfo ||= self.class.nmcli_properties(connection)
+    @addrinfo ||= self.class.nmcli_properties(
+      connection,
+      'ipaddr' => @resource[:ipaddr],
+      'ipv6addr' => @resource[:ipv6addr],
+    )
   end
 
   # For the parent this asks about two things at once - an interface exists and

@@ -45,4 +45,25 @@ describe Puppet::Type.type(:network_alias) do
       }.not_to raise_error
     end
   end
+
+  # An alias is an entry of the parent's connection profile, so the parent has
+  # to exist before there is anything to add an address to.
+  describe 'ordering against the parent interface' do
+    let(:catalog) { Puppet::Resource::Catalog.new }
+
+    it 'runs after the network_iface it belongs to' do
+      parent = Puppet::Type.type(:network_iface).new(name: 'lo')
+      alias_resource = described_class.new(name: 'myspc', parent_device: 'lo', ipaddr: '10.0.0.1')
+      catalog.add_resource(parent, alias_resource)
+
+      expect(alias_resource.autorequire.map { |edge| edge.source.to_s }).to include('Network_iface[lo]')
+    end
+
+    it 'requires nothing when the parent is not in the catalogue' do
+      alias_resource = described_class.new(name: 'myspc', parent_device: 'lo', ipaddr: '10.0.0.1')
+      catalog.add_resource(alias_resource)
+
+      expect(alias_resource.autorequire).to be_empty
+    end
+  end
 end

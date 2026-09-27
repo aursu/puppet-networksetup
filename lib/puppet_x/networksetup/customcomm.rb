@@ -72,6 +72,14 @@ module CustomComm
       desc 'Additional IPv6 addresses from network script (IPV6ADDR_SECONDARIES)'
     end
 
+    # ifcfg had no IPADDR_SECONDARIES: additional IPv4 addresses were alias
+    # files of their own, ifcfg-lo:myspc and the like. NetworkManager keeps
+    # one address list per connection for both families, so the IPv4 case
+    # becomes what the IPv6 one always was.
+    extender.newproperty(:ipaddr_secondaries, array_matching: :all, parent: PuppetX::NetworkSetup::IPProperty) do
+      desc 'Additional IPv4 addresses of the same connection. NetworkManager storage only'
+    end
+
     extender.newproperty(:netmask) do
       desc 'Network mask from network script (NETMASK)'
 

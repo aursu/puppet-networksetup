@@ -21,6 +21,17 @@ define networksetup::loopback::ipv4 (
 ) {
   include networksetup::loopback
 
+  # TYPE was a key of the alias ifcfg file. In a NetworkManager profile it
+  # belongs to the parent connection, and an alias is one entry of that
+  # profile's address list - so declaring it here would be a change no
+  # provider can make, reported on every run.
+  if $networksetup::globals::nmcli_managed {
+    $alias_conn_type = undef
+  }
+  else {
+    $alias_conn_type = 'Ethernet'
+  }
+
   $addrinfo = split($addr, '/')
 
   $addrprefix = $prefix ? {
@@ -30,7 +41,7 @@ define networksetup::loopback::ipv4 (
 
   network_alias { $name:
     parent_device => 'lo',
-    conn_type     => 'Ethernet',
+    conn_type     => $alias_conn_type,
     ipaddr        => $addrinfo[0],
     netmask       => $netmask,
     prefix        => $addrprefix,

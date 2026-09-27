@@ -100,6 +100,7 @@ Puppet::Type.type(:network_iface).provide(:ip, parent: Puppet::Provider::Network
   def ifcfg_content
     ifcfg_device    = @resource[:device]    || device
     ifcfg_ipaddr    = @resource[:ipaddr]    || ipaddr
+    self.class.ifcfg_secondaries(@resource[:ipaddr_secondaries])
     ifcfg_netmask   = @resource[:netmask]   || netmask
     ifcfg_network   = @resource[:network]   || network
     ifcfg_broadcast = @resource[:broadcast] || broadcast
