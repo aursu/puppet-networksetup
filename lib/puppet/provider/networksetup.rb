@@ -602,23 +602,25 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     end
   end
 
-  def self.route_delete(dst, dev = nil, gateway = nil)
+  def self.route_delete(dst, dev = nil, gateway = nil, metric = nil)
     raise Puppet::Error, 'Destination is required for route deletion' if dst.nil? || dst.empty?
 
     args = ['route', 'del', dst]
     args += ['dev', dev] unless dev.nil? || dev.empty?
     args += ['via', gateway] unless gateway.nil? || gateway.empty?
+    args += ['metric', metric.to_s] unless metric.nil? || metric.to_s.empty?
 
     Puppet.debug "Executing: ip #{args.join(' ')}"
     ip_caller(*args)
   end
 
-  def self.route_create(dst, dev = nil, gateway = nil)
+  def self.route_create(dst, dev = nil, gateway = nil, metric = nil)
     raise Puppet::Error, 'Destination is required for route creation' if dst.nil? || dst.empty?
 
     args = ['route', 'add', dst]
     args += ['dev', dev] unless dev.nil? || dev.empty?
     args += ['via', gateway] unless gateway.nil? || gateway.empty?
+    args += ['metric', metric.to_s] unless metric.nil? || metric.to_s.empty?
 
     Puppet.debug "Executing: ip #{args.join(' ')}"
     ip_caller(*args)
@@ -1047,6 +1049,28 @@ class Puppet::Provider::NetworkSetup < Puppet::Provider
     raise Puppet::Error,
           _("conn_type \"#{conn_type}\" has no NetworkManager equivalent, so a profile cannot be created for it. " \
             'Give a conn_type NetworkManager knows, such as Ethernet or Bridge.')
+  end
+
+  # A NetworkManager list property - ipv4.addresses, ipv4.routes,
+  # ipv4.routing-rules - holds entries that separate resources own one each.
+  # Such a resource cannot write the property, only add to it and take from
+  # it, so these three are what a provider of that shape uses.
+  #
+  # Removal matches the whole entry as the profile spells it. Measured:
+  # `-ipv4.routes "10.99.91.0/24"` against a stored
+  # `10.99.91.0/24 10.99.92.253 200` exits 0 and removes nothing, exactly as
+  # an address without its prefix does. So an entry is taken from the profile
+  # and passed back, never rebuilt from what a resource declares.
+  def self.nmcli_list_entries(desc, property)
+    desc[property].to_s.split(',').map(&:strip).reject(&:empty?)
+  end
+
+  def self.nmcli_list_add(uuid, property, entry)
+    nmcli_connection_modify(uuid, "+#{property}", entry)
+  end
+
+  def self.nmcli_list_remove(uuid, property, entry)
+    nmcli_connection_modify(uuid, "-#{property}", entry)
   end
 
   # An address list with the resource's own address first, whatever order

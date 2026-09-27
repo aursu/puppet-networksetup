@@ -40,6 +40,16 @@ Puppet::Type.newtype(:network_route) do
     end
   end
 
+  newproperty(:metric) do
+    desc 'Route metric, the preference among routes to the same destination (metric).'
+
+    validate do |value|
+      raise Puppet::ParseError, _('metric must be a non-negative integer') unless value.to_s.match?(%r{^\d+$})
+    end
+
+    munge { |value| value.to_s }
+  end
+
   newparam(:lookup_device) do
     desc 'CIDR network (e.g., "10.50.16.0/24") used to auto-detect the interface if device is not specified.'
 

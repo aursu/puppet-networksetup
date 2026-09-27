@@ -67,7 +67,7 @@ Puppet::Type.type(:network_alias).provide(
     addr = address.to_s.split('/').first
     return nil if addr.empty?
 
-    self.class.address_list(connection["#{address_family}.addresses"])
+    self.class.nmcli_list_entries(connection, "#{address_family}.addresses")
         .find { |entry| entry.split('/').first == addr }
   end
 
@@ -82,7 +82,7 @@ Puppet::Type.type(:network_alias).provide(
               "#{address} to. Declare a network_iface for #{parent_device}, or create its profile.")
     end
 
-    self.class.nmcli_connection_modify(connection['connection.uuid'], "+#{address_family}.addresses", address)
+    self.class.nmcli_list_add(connection['connection.uuid'], "#{address_family}.addresses", address)
     apply
   end
 
@@ -92,7 +92,7 @@ Puppet::Type.type(:network_alias).provide(
   def destroy
     return if connection.empty?
 
-    self.class.nmcli_connection_modify(connection['connection.uuid'], "-#{address_family}.addresses", current_address || address)
+    self.class.nmcli_list_remove(connection['connection.uuid'], "#{address_family}.addresses", current_address || address)
     apply
   end
 

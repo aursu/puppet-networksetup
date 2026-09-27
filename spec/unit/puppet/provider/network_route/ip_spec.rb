@@ -24,8 +24,8 @@ describe Puppet::Type.type(:network_route).provider(:ip) do
 
   describe '#create' do
     it 'creates a route and writes to the config file' do
-      expect(described_class).to receive(:route_create).with('10.100.16.0/24', 'eth0', '192.168.1.1')
-      expect(described_class).to receive(:write_route_config).with('eth0', '10.100.16.0/24', '192.168.1.1')
+      expect(described_class).to receive(:route_create).with('10.100.16.0/24', 'eth0', '192.168.1.1', nil)
+      expect(described_class).to receive(:write_route_config).with('eth0', '10.100.16.0/24', '192.168.1.1', nil)
       provider.create
     end
   end
@@ -33,7 +33,7 @@ describe Puppet::Type.type(:network_route).provider(:ip) do
   describe '#destroy' do
     it 'deletes a route and removes it from config file' do
       allow(provider).to receive(:route_lookup).and_return({ 'dst' => '10.100.16.0/24' })
-      expect(described_class).to receive(:route_delete).with('10.100.16.0/24', 'eth0', '192.168.1.1')
+      expect(described_class).to receive(:route_delete).with('10.100.16.0/24', 'eth0', '192.168.1.1', nil)
       expect(described_class).to receive(:remove_route_from_config).with('eth0', '10.100.16.0/24')
       provider.destroy
     end
@@ -50,11 +50,36 @@ describe Puppet::Type.type(:network_route).provider(:ip) do
     end
 
     it 'updates the route and config file' do
-      expect(described_class).to receive(:route_delete).with('10.100.16.0/24', 'eth0', '192.168.1.1')
+      expect(described_class).to receive(:route_delete).with('10.100.16.0/24', 'eth0', '192.168.1.1', nil)
       expect(described_class).to receive(:remove_route_from_config).with('eth0', '10.100.16.0/24')
-      expect(described_class).to receive(:route_create).with('10.100.16.0/24', 'eth1', '192.168.1.2')
-      expect(described_class).to receive(:write_route_config).with('eth1', '10.100.16.0/24', '192.168.1.2')
+      expect(described_class).to receive(:route_create).with('10.100.16.0/24', 'eth1', '192.168.1.2', nil)
+      expect(described_class).to receive(:write_route_config).with('eth1', '10.100.16.0/24', '192.168.1.2', nil)
       provider.flush
+    end
+  end
+
+  # A metric is a property of the route, not of the file: initscripts spells it
+  # the same way ip does, and a route without one is written exactly as before.
+  describe 'a route with a metric' do
+    let(:resource) do
+      Puppet::Type.type(:network_route).new(
+        name: '10.100.16.0/24 via 192.168.1.1',
+        ensure: :present,
+        destination: '10.100.16.0/24',
+        device: 'eth0',
+        gateway: '192.168.1.1',
+        metric: 200,
+        provider: :ip,
+      )
+    end
+
+    it 'puts it on the live route and into the file' do
+      expect(described_class).to receive(:route_create)
+        .with('10.100.16.0/24', 'eth0', '192.168.1.1', '200')
+      expect(described_class).to receive(:write_route_config)
+        .with('eth0', '10.100.16.0/24', '192.168.1.1', '200')
+
+      described_class.new(resource).create
     end
   end
 

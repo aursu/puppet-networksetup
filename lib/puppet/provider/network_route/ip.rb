@@ -105,6 +105,10 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     @device ||= @property_hash[:device] || route_lookup['device']
   end
 
+  def metric
+    @metric ||= @property_hash[:metric] || route_lookup['metric']
+  end
+
   def destination=(value)
     @property_flush[:destination] = value
   end
@@ -117,11 +121,15 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     @property_flush[:device] = value
   end
 
+  def metric=(value)
+    @property_flush[:metric] = value
+  end
+
   def self.route_config_file(dev)
     "/etc/sysconfig/network-scripts/route-#{dev}"
   end
 
-  def self.write_route_config(dev, dst, gateway = nil)
+  def self.write_route_config(dev, dst, gateway = nil, metric = nil)
     return unless dev && !dev.empty?
 
     config_file = route_config_file(dev)
@@ -137,6 +145,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     end
 
     new_route = gateway ? "#{dst} via #{gateway}" : dst.to_s
+    new_route += " metric #{metric}" unless metric.nil? || metric.to_s.empty?
     return if existing_routes.include?(new_route) # Избегаем дубликатов
 
     Puppet.debug "Adding route to #{config_file}: #{new_route}"
@@ -167,9 +176,10 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     dst = resource[:destination]
     dev = resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = resource[:gateway]
+    metric = resource[:metric]
 
-    Puppet.debug "Deleting route: dst=#{dst}, dev=#{dev}, gateway=#{gateway}"
-    self.class.route_delete(dst, dev, gateway)
+    Puppet.debug "Deleting route: dst=#{dst}, dev=#{dev}, gateway=#{gateway}, metric=#{metric}"
+    self.class.route_delete(dst, dev, gateway, metric)
     self.class.remove_route_from_config(dev, dst) # Удаляем из конфига
   end
 
@@ -177,11 +187,12 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     dst = resource[:destination]
     dev = resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = resource[:gateway]
+    metric = resource[:metric]
     nocreate = resource[:nocreate]
 
-    Puppet.debug "Creating route: dst=#{dst}, dev=#{dev}, gateway=#{gateway}"
-    self.class.route_create(dst, dev, gateway)
-    self.class.write_route_config(dev, dst, gateway) unless nocreate
+    Puppet.debug "Creating route: dst=#{dst}, dev=#{dev}, gateway=#{gateway}, metric=#{metric}"
+    self.class.route_create(dst, dev, gateway, metric)
+    self.class.write_route_config(dev, dst, gateway, metric) unless nocreate
   end
 
   def flush
@@ -190,19 +201,21 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
     dst = resource[:destination]
     dev = @property_flush[:device] || resource[:device] || self.class.get_device_by_network(resource[:lookup_device])&.first
     gateway = @property_flush[:gateway] || resource[:gateway]
+    metric = @property_flush[:metric] || resource[:metric]
     nocreate = resource[:nocreate]
 
-    Puppet.debug "Flushing route changes: dst=#{dst}, dev=#{dev}, gateway=#{gateway}"
+    Puppet.debug "Flushing route changes: dst=#{dst}, dev=#{dev}, gateway=#{gateway}, metric=#{metric}"
 
     if @property_hash[:ensure] == :present
       old_dev = @property_hash[:device]
       old_gateway = @property_hash[:gateway]
-      self.class.route_delete(dst, old_dev, old_gateway)
+      old_metric = @property_hash[:metric]
+      self.class.route_delete(dst, old_dev, old_gateway, old_metric)
       self.class.remove_route_from_config(old_dev, dst) # Удаляем старую запись
     end
 
-    self.class.route_create(dst, dev, gateway)
-    self.class.write_route_config(dev, dst, gateway) unless nocreate
+    self.class.route_create(dst, dev, gateway, metric)
+    self.class.write_route_config(dev, dst, gateway, metric) unless nocreate
 
     @property_hash.merge!(@property_flush)
     @property_flush.clear
