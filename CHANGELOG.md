@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 2.1.2
+
+**Bugfixes**
+
+* `network_alias` and `network_route` stay on the `ip` provider on EL8 and EL9.
+  Their `ip` providers were suitable there but not a default, and with no
+  default among the suitable providers Puppet takes the most specific one -
+  `nmcli`, which is installed on EL8 and EL9 as well. So an alias kept in an
+  `ifcfg` file was looked for in a NetworkManager profile and reported absent;
+  a run would have added it to the profile of `lo`. Seen with `--noop` on an
+  EL9 node before any run applied it. Both now declare `defaultfor osfamily:
+  redhat`, as `network_iface` always did, and a spec checks the choice for
+  every type on EL8, EL9 and EL10
+
 ## Release 2.1.1
 
 **Bugfixes**

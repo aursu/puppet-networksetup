@@ -6,6 +6,7 @@ Puppet::Type.type(:network_alias).provide(:ip, parent: Puppet::Provider::Network
   confine osfamily: :redhat
 
   commands ip: 'ip'
+  defaultfor osfamily: :redhat
 
   def initialize(value = {})
     super(value)

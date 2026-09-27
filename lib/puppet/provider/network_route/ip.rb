@@ -4,6 +4,7 @@ Puppet::Type.type(:network_route).provide(:ip, parent: Puppet::Provider::Network
   desc 'Manage network route.'
 
   commands ip: 'ip'
+  defaultfor osfamily: :redhat
 
   def initialize(value = {})
     super(value)
