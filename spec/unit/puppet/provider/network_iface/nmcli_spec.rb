@@ -220,6 +220,58 @@ describe Puppet::Type.type(:network_iface).provider(:nmcli) do
       provider.flush
     end
 
+    # The lo profile of web170c25 (Rocky 10.2, 2026-09-27) after loopbacks put
+    # eight service addresses on it through network_alias. The interface owns
+    # 127.0.0.1/8 and nothing else; a flush that wrote its own address alone
+    # would erase the aliases and reapply would take them off the device.
+    context 'on a loopback whose other addresses belong to network_alias' do
+      let(:resource) do
+        Puppet::Type.type(:network_iface).new(
+          name: 'lo',
+          ensure: :present,
+          ipaddr: '127.0.0.1',
+          netmask: '255.0.0.0',
+          provider: :nmcli,
+        )
+      end
+
+      let(:aliases) do
+        '64.29.155.0/24, 69.49.112.0/24, 64.29.156.0/32, 209.235.157.0/24, ' \
+          '209.235.144.12/32, 209.235.144.9/32, 69.49.118.0/24, 209.235.144.14/32'
+      end
+
+      before(:each) do
+        allow(described_class).to receive(:nmcli_connection_lookup)
+          .and_return('NAME' => 'lo', 'UUID' => '20be7eb0', 'DEVICE' => 'lo', 'ACTIVE' => 'yes')
+        allow(described_class).to receive(:nmcli_connection_show)
+          .and_return('connection.id' => 'lo', 'connection.uuid' => '20be7eb0',
+                      'connection.type' => 'loopback', 'connection.interface-name' => 'lo',
+                      'ipv4.method' => 'manual', 'ipv4.addresses' => "127.0.0.1/8, #{aliases}",
+                      'ipv6.addresses' => '::1/128')
+        allow(described_class).to receive(:nmcli_device_reapply)
+      end
+
+      it 'carries the undeclared secondaries over' do
+        provider.onboot = 'no'
+
+        expect(described_class).to receive(:nmcli_connection_modify)
+          .with('20be7eb0', 'connection.autoconnect', 'yes',
+                'ipv4.addresses', "127.0.0.1/8, #{aliases}")
+
+        provider.flush
+      end
+
+      it 'writes the secondaries it declares, an empty list included' do
+        resource[:ipaddr_secondaries] = []
+        provider.onboot = 'no'
+
+        expect(described_class).to receive(:nmcli_connection_modify)
+          .with('20be7eb0', 'connection.autoconnect', 'yes', 'ipv4.addresses', '127.0.0.1/8')
+
+        provider.flush
+      end
+    end
+
     # A profile nothing is running takes effect when it is next activated, and
     # asking NetworkManager to reapply it would fail for no reason.
     it 'does not apply a profile no device is running' do

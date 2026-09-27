@@ -103,6 +103,24 @@ Puppet::Type.type(:network_iface).provide(
     end
   end
 
+  # An address list is one NetworkManager property with several owners on a
+  # loopback: the interface declares its own address, and each network_alias
+  # adds one entry. Writing the list whole from an interface that declares no
+  # secondaries would erase every alias, and reapply would take them off the
+  # device until the aliases put themselves back later in the run. So
+  # secondaries the resource does not declare are carried over as the profile
+  # has them; declaring them - an empty list included - is what owning them
+  # means.
+  def written_properties
+    props = declared_properties
+    [['ipaddr', 'ipaddr_secondaries'], ['ipv6addr', 'ipv6addr_secondaries']].each do |primary, secondaries|
+      next unless props.key?(primary) && !props.key?(secondaries)
+
+      props[secondaries] = ifcfg_data[secondaries]
+    end
+    props
+  end
+
   def create
     return super if @resource[:link_kind] == :veth
 
@@ -146,7 +164,7 @@ Puppet::Type.type(:network_iface).provide(
 
     self.class.nmcli_connection_modify(
       connection['connection.uuid'],
-      *self.class.nmcli_arguments(declared_properties),
+      *self.class.nmcli_arguments(written_properties),
     )
 
     apply
