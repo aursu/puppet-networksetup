@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 2.1.4
+
+**Features**
+
+* `networksetup::loopback::ipv4` takes `ensure`. `absent` takes the address off
+  the loopback interface - out of the `lo` profile where NetworkManager is the
+  storage, its `ifcfg` file otherwise. `present` compiles exactly as before.
+  An alias is identified by its address, so an absent one must not share an
+  address with a present one
+
 ## Release 2.1.3
 
 **Bugfixes**
