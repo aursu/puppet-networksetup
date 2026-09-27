@@ -12,12 +12,17 @@
 # @param prefix
 #   IP address prefix to use (CIDR). But netmask has higher priority
 #
+# @param ensure
+#   absent takes the address off the loopback interface: out of the lo
+#   profile where NetworkManager is the storage, its ifcfg file otherwise.
+#
 # @example
 #   networksetup::loopback::ipv4 { 'alias1': }
 define networksetup::loopback::ipv4 (
   Stdlib::IP::Address::V4 $addr,
   Optional[Stdlib::IP::Address::V4] $netmask = undef,
   Optional[Integer] $prefix  = undef,
+  Enum['present', 'absent'] $ensure = 'present',
 ) {
   include networksetup::loopback
 
@@ -34,12 +39,20 @@ define networksetup::loopback::ipv4 (
 
   $addrinfo = split($addr, '/')
 
+  # present is every type's default; it is left undeclared so a present
+  # alias compiles exactly as it did before this parameter existed.
+  $resource_ensure = $ensure ? {
+    'absent' => 'absent',
+    default  => undef,
+  }
+
   $addrprefix = $prefix ? {
     Integer => $prefix,
     default => $addrinfo[1],
   }
 
   network_alias { $name:
+    ensure        => $resource_ensure,
     parent_device => 'lo',
     conn_type     => $alias_conn_type,
     ipaddr        => $addrinfo[0],
@@ -49,6 +62,7 @@ define networksetup::loopback::ipv4 (
   }
 
   network_addr { $addrinfo[0]:
+    ensure => $resource_ensure,
     device => 'lo',
     label  => $name,
   }

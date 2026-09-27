@@ -43,6 +43,16 @@ describe 'networksetup::loopback::ipv4' do
           .without_prefix
       }
 
+      it { is_expected.to contain_network_alias('namevar').without_ensure }
+      it { is_expected.to contain_network_addr('192.168.0.10').without_ensure }
+
+      context 'when absent' do
+        let(:params) { super().merge(ensure: 'absent') }
+
+        it { is_expected.to contain_network_alias('namevar').with_ensure('absent').with_parent_device('lo') }
+        it { is_expected.to contain_network_addr('192.168.0.10').with_ensure('absent').with_device('lo') }
+      end
+
       context 'when IP address with prefix' do
         let(:params) do
           {
