@@ -7,11 +7,6 @@
 class networksetup::params {
   if $facts['os']['family'] == 'RedHat' {
     case $facts['os']['release']['major'] {
-      '7':{
-        $initscripts = 'initscripts'
-        $manage_initscripts = true
-        $nmcli_managed = false
-      }
       '8': {
         $initscripts = 'network-scripts'
         $manage_initscripts = true

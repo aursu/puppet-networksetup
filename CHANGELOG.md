@@ -2,34 +2,74 @@
 
 All notable changes to this project will be documented in this file.
 
-## Release 1.9.0
+## Release 2.0.0
+
+**Breaking changes**
+
+* CentOS 7 leaves `operatingsystem_support`. facterdb 4.x carries no centos-7
+  factset, so `on_supported_os` had stopped generating examples for it and the
+  release had been claimed but not tested for some time
+* The `brctl` provider is removed. It was confined to EL6 and EL7, so it could
+  not be selected on anything the fleet still runs, and it overrode one method
+  to call `brctl addif`
+* `bridge-utils` is no longer installed, and `manage_bridge_utils` is gone from
+  `networksetup::install` and `networksetup::globals`. A node that has the
+  package keeps it; Puppet simply stops managing it
 
 **Features**
 
+* `network_iface` can be managed on Rocky/RHEL 10, where there are no
+  `network-scripts`, through a provider that keeps a NetworkManager connection
+  profile instead of an `ifcfg` file. It inherits the `ip` provider, so the
+  state of an interface is still read and changed with `ip`, and only the
+  persistence differs
+* A profile is found by connection name, by device, or by **MAC address** - a
+  resource can say only "the interface whose MAC is this", which is what a
+  hypervisor's control panel tells you, and never name an interface
+* A changed profile is applied with `nmcli device reapply`, which does not
+  interrupt the running interface. Where NetworkManager cannot reapply a change
+  the resource fails and says so; it never reactivates a connection by itself
+* `conn_type` accepts NetworkManager's own device types - `loopback`, `dummy`,
+  `bond`, `vlan`, `vrf`, `wireguard` and others - none of which `TYPE` in an
+  `ifcfg` file could express. A provider that writes `ifcfg` refuses them
+* `bootproto` accepts NetworkManager's methods alongside the `ifcfg` ones, and
+  treats `none` and `static` as satisfied by `manual`, `dhcp` by `auto`, so a
+  manifest written for `ifcfg` stays in sync on a release where NetworkManager
+  is the storage. `disabled`, `link-local` and `shared` became expressible
 * Added `networksetup::netplan`, which renders a netplan configuration file
   from Puppet data and hands the result to `netplan generate` and
-  `netplan apply` when it changes
-* Added the `Networksetup::Netplan::*` data types backing that class: ethernets,
-  bonds with their parameters, VLANs, addresses, nameservers and routes
-* Added Ubuntu 22.04 / 24.04 to the declared operating system support, for
-  `networksetup::netplan` only - every other class in the module remains
-  RedHat only
-* Declared Rocky Linux 10 / RHEL 10 in the supported operating systems, and
-  taught `networksetup::params` and `networksetup::install` about a release
-  with no ifcfg files at all. The providers that manage such a release through
-  nmcli are not written yet, so on EL10 the module currently manages the
-  packages and services and nothing else
+  `netplan apply` when it changes, with the `Networksetup::Netplan::*` data
+  types behind it: ethernets, bonds, VLANs, addresses, nameservers and routes
+* Added Ubuntu 22.04 and 24.04 to the declared operating systems, for
+  `networksetup::netplan` only - every other class remains RedHat
 
 **Bugfixes**
 
-* `network_iface` writes `NM_CONTROLLED=no` again: the default had been dropped
-  from the type, which silently changed what every EL8 and EL9 node gets in its
-  ifcfg files
-* `network_alias` and `networksetup::sysconfig` specs test what they claim to:
-  one read a fixture under a name that no longer existed, the other checked
-  EL10 against the expectations for a release that has ifcfg files
+* `network_iface` writes `NM_CONTROLLED=no` again. The default had been dropped
+  from the type, which silently changed what every EL8 and EL9 node puts in its
+  `ifcfg` files. It now comes from the provider that writes those files, so a
+  release storing a NetworkManager profile is not left with a property it can
+  never read back and a resource that changes on every run
+* `networksetup::loopback` no longer declares `conn_type`, `network`,
+  `broadcast` or `conn_name` where NetworkManager is the storage. All four are
+  `ifcfg` keys - `TYPE=Ethernet` on a loopback interface was a fiction
+  initscripts required - and declaring them made Puppet report a change it
+  could not make, or rename a profile it did not create
+* `network_iface` no longer raises `NoMethodError` where no provider is
+  suitable; it reports what is actually wrong
+* Two specs tested nothing: one read a fixture under a name that no longer
+  existed, the other checked EL10 against the expectations of a release that
+  has `ifcfg` files
 
 **Known Issues**
+
+* Only `network_iface` has a NetworkManager provider. `network_alias` and
+  `network_route` still write `ifcfg` files, so on Rocky/RHEL 10 a resource of
+  either type fails with `ENOENT` on `/etc/sysconfig/network-scripts`. In
+  practice this means `networksetup::loopback::ipv4` and `::ipv6` - loopback
+  aliases - do not work there yet
+* Bridge membership is not persisted, and never was: `BRIDGE` is written to no
+  `ifcfg` file, and setting `bridge` on a non-veth interface has no effect
 
 ## Release 1.0.0
 
